@@ -1,7 +1,46 @@
 # Design: rbac-access-control
 
-> **Estado:** Etapa 1 (Modelo) — solo documentación, pendiente de aprobación.
-> Las secciones de etapas 2-7 se completan cuando se aprueben las anteriores.
+> **Estado:** Etapa 1 aprobada. Etapa 2 (migración) implementada, **SQL generado offline, sin aplicar** a la base real (pendiente de aprobación del usuario).
+> Contrato de API: fuente única en `api-contract.md` (borrador; se cierra en etapa 6).
+
+## Respuestas del usuario (etapa 1)
+
+| # | Decisión |
+|---|---|
+| P1 | Opción (a): `admin → is_superuser = 1`; `operator → is_superuser = 0`. El seed (etapa 3) crea el grupo **"Operadores"** con el rol **"Operador"** = todos los permisos de negocio **menos** `rbac:manage` y **menos** `orders:delete`. |
+| P2 | Se agrega `users.updated_at`, backfill `= created_at`. |
+| P3 | `user_roles` usa `assigned_at`/`assigned_by` (en lugar de `created_*`) + `updated_at`/`updated_by`. |
+| P4 | ON DELETE aprobados tal cual: grupo CASCADE en puentes; rol en uso RESTRICT → 409 `ROLE_IN_USE`. |
+| P5 | Se mantiene `groups`; SQL crudo con backticks (incluido `conftest.py`). |
+| P6 | `permission_required(A, B)` = AND (todos). |
+| P7 | `is_superuser` **no** se modifica por API; solo seed/CLI. |
+| P8 | Se autoriza modificar `conftest.py` (`is_superuser=True` en id=1, truncado de tablas nuevas con backticks). Ningún test existente se cambia. |
+| P9 | `users.role` queda deprecada y sigue en login y `/me`; se borra en un cambio futuro. |
+| P10 | Usuario inactivo → 401 aunque sea superusuario. |
+
+Decisiones adicionales acordadas con el plan de frontend (`frontend-plan.md`):
+- Permisos de la sección de seguridad: solo `rbac:read` (lecturas) y `rbac:manage` (escrituras). No hay `rbac:users:read`.
+- Errores con `code` además de `error`: `SELF_LOCKOUT` (409), `ROLE_IN_USE` (409), `SELF_ASSIGNMENT`.
+- **No** hay bloqueo `LAST_ADMIN` (lo cubre el superusuario).
+- Listado de usuarios sin paginación.
+- Acceso efectivo: `GET /api/rbac/users/<id>/access` (no `/effective-access`).
+- Habrá un test backend que compare `frontend/src/features/security/permissions/perms.js` con el enum `Perm` (etapa 3 o 4). Formato acordado: una entrada por línea dentro de `export const PERM = Object.freeze({ ... })`, `NOMBRE_MIEMBRO: 'recurso:acción',`, con nombres iguales a los miembros del enum Python.
+- `GET /api/auth/me/permissions` es contrato **fijo** (el frontend ya lo consume): ver `api-contract.md` §1.
+- `orders:read` existe en el catálogo (etapa 3); los recursos usan el nombre del endpoint en inglés (`orders`, no `ordenes`).
+
+## Etapa 2 — Migración (hecho)
+
+- `backend/app/auth/models.py`: `User.is_superuser` (`BOOL NOT NULL DEFAULT 0`), `User.updated_at` (`DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP`, `onupdate`). `role` marcada deprecada en comentario; `to_dict()` sin cambios.
+- `backend/app/rbac/__init__.py`, `backend/app/rbac/models.py`: `Group`, `Role`, `Permission`, `UserGroup`, `GroupRole`, `UserRole`, `RolePermission`. Sin relationships ORM todavía (se agregan en etapa 5 si las consultas lo requieren).
+- `backend/app/__init__.py`: importa `app.rbac.models` (necesario para `create_all` y autogenerate).
+- `backend/migrations/versions/44a4db68ccde_add_rbac_tables.py` (`down_revision = c8c9b0e3a953`): escrita a mano (no autogenerate, para no conectar a la base real). Incluye backfill `is_superuser` y `updated_at`. Downgrade: `DROP TABLE` en orden inverso + `drop_column` de las 2 columnas de `users` (los índices caen con la tabla; dropearlos antes fallaría porque MySQL los exige para las FK).
+- Paridad modelo ↔ migración verificada compilando el DDL de los modelos con el dialecto MySQL: mismos nombres de FK (`fk_<tabla>_<col>`), `ondelete`, UNIQUE, CHECK, índices y `server_default`.
+- Timestamps nuevos con `server_default CURRENT_TIMESTAMP` además del default Python, para que filas insertadas por SQL crudo (seed/migración) no fallen.
+- `backend/tests/conftest.py`: usuario id=1 con `is_superuser=True`; `_clean_tables` trunca las 7 tablas nuevas y usa backticks en todos los `TRUNCATE`.
+- SQL offline generado y revisado (sin aplicar): `flask db upgrade c8c9b0e3a953:44a4db68ccde --sql` y `flask db downgrade 44a4db68ccde:c8c9b0e3a953 --sql`. Contiene 2 CHECK, 16 índices secundarios, 20 FK con `ON DELETE` explícito y los 2 `UPDATE users` de backfill.
+- Suite completa con modelos nuevos sobre la base de test: **234 passed** (verificado en el worktree `feat/rbac`).
+- ⚠️ **Despliegue:** el contenedor `delivery3d-backend` monta el repo en vivo. Cambiar `User` sin aplicar la migración rompe el login (`Unknown column users.is_superuser`). Por eso el trabajo vive en el worktree `.worktrees/rbac` (rama `feat/rbac`) y el orden de despliegue es: **primero `flask db upgrade`, después el código**.
+- ⚠️ El downgrade borra `is_superuser`/`updated_at` y todas las asignaciones RBAC (pérdida de datos esperable en un downgrade de tablas nuevas). `users.role` no se toca, así que un re-upgrade reconstruye `is_superuser` desde `role`.
 
 ## Involved Files (real paths)
 Relevados para esta etapa (no se modifican en la etapa 1):
@@ -270,7 +309,14 @@ Se completa en la etapa 2.
 - [x] **Create** `openspec/changes/rbac-access-control/proposal.md`
 - [x] **Create** `openspec/changes/rbac-access-control/design.md` (este archivo, sección Etapa 1)
 
-### Etapas 2-7
-Se detallan al aprobarse cada etapa.
+### Etapa 2
+- [x] **Modify** `backend/app/auth/models.py` — `is_superuser`, `updated_at`
+- [x] **Create** `backend/app/rbac/__init__.py`, `backend/app/rbac/models.py`
+- [x] **Modify** `backend/app/__init__.py` — import de modelos RBAC
+- [x] **Create** `backend/migrations/versions/44a4db68ccde_add_rbac_tables.py`
+- [x] **Modify** `backend/tests/conftest.py` — superuser id=1 + truncado tablas nuevas (P8)
+- [x] **Create** `openspec/changes/rbac-access-control/api-contract.md` (borrador)
+- [ ] `flask db upgrade` contra la base real — **pendiente de aprobación del usuario**
 
-**Esta etapa no toca:** código Python, migraciones, seeds, tests, frontend ni la base de datos.
+### Etapas 3-7
+Se detallan al aprobarse cada etapa.

@@ -56,6 +56,7 @@ def create_app(config_overrides: dict | None = None) -> Flask:
     # Import order matters: models with FKs must be imported after their targets so
     # SQLAlchemy can resolve `db.ForeignKey("<table>.id")` string references.
     from app.auth import models as auth_models  # noqa: F401
+    from app.rbac import models as rbac_models  # noqa: F401
     from app.clients import models as clients_models  # noqa: F401
     from app.filaments import models as filaments_models  # noqa: F401
     from app.materials import models as materials_models  # noqa: F401

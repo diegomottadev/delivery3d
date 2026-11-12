@@ -4,6 +4,10 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from app.extensions import db
 
 
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 class User(db.Model):
     """User entity for authentication and system audit, conforming to OWASP guidelines."""
 
@@ -12,9 +16,20 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     username = db.Column(db.String(80), nullable=False, unique=True)
     password_hash = db.Column(db.String(255), nullable=False, default="unset")
+    # DEPRECADA (rbac-access-control): no se usa para autorizar; se conserva por contrato
+    # de login y /me hasta un cambio futuro coordinado con el frontend.
     role = db.Column(db.String(20), nullable=False, default="operator")
     is_active = db.Column(db.Boolean, nullable=False, default=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    # Bypass total de RBAC. Solo se modifica por seed/CLI, nunca por la API.
+    is_superuser = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text("0"))
+    created_at = db.Column(db.DateTime, nullable=False, default=_utcnow)
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+        server_default=db.text("CURRENT_TIMESTAMP"),
+    )
 
     def set_password(self, password: str) -> None:
         """Hashes password with salted pbkdf2:sha256."""

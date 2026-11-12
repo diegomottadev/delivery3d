@@ -37,6 +37,15 @@ def _clean_tables(app):
         # FK-safe truncation order: children before parents.
         db.session.execute(db.text("SET FOREIGN_KEY_CHECKS=0"))
         for table in (
+            # rbac-access-control: puentes antes que catálogos. `groups` es palabra
+            # reservada en MySQL 8, por eso TRUNCATE usa backticks.
+            "role_permissions",
+            "user_roles",
+            "group_roles",
+            "user_groups",
+            "permissions",
+            "roles",
+            "groups",
             "cash_movements",
             "cash_income_categories",
             "cash_expense_categories",
@@ -51,9 +60,9 @@ def _clean_tables(app):
             "printers",
             "users",
         ):
-            db.session.execute(db.text(f"TRUNCATE TABLE {table}"))
+            db.session.execute(db.text(f"TRUNCATE TABLE `{table}`"))
         db.session.execute(db.text("SET FOREIGN_KEY_CHECKS=1"))
-        user = User(id=1, username="operador", role="admin", is_active=True)
+        user = User(id=1, username="operador", role="admin", is_active=True, is_superuser=True)
         user.set_password("operador123")
         db.session.add(user)
         db.session.add_all([

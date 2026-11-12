@@ -3,6 +3,18 @@
 > Autor: agente FRONTEND. Estado: **borrador para aprobación** (sin código todavía).
 > Complementa `proposal.md` / `design.md` (backend) de este mismo change; no los reemplaza.
 
+## 0. Decisiones confirmadas por el usuario (prevalecen sobre el resto del documento)
+
+- 403 → ruta nueva **`/acceso-denegado` dentro del layout** (conserva el menú). `/access` no se toca.
+- Sección Seguridad: solo `rbac:read` (lecturas) y `rbac:manage` (escrituras). Formato siempre `recurso:acción` con un solo `:`.
+- "Usuarios afectados": se muestran los dos números (miembros y los que pierden permisos).
+- Listado de usuarios **sin paginar**: se trae todo y se filtra en el front.
+- Rol en uso no se borra: backend 409 `ROLE_IN_USE`. Sin `LAST_ADMIN` (lo cubre el superusuario).
+- Habrá test backend que compara `perms.js` con el enum `Perm`.
+- Acceso efectivo: `GET /api/rbac/users/<id>/access` (no `/effective-access`). Errores con `code` (`SELF_LOCKOUT`, `ROLE_IN_USE`, `SELF_ASSIGNMENT`).
+- **Fuente única del contrato: `api-contract.md`** (backend). La §10 de este documento queda como propuesta histórica.
+- Base de permisos implementada (ronda 2): `features/security/{securityApi.js, AccessDeniedView.jsx, SecurityPlaceholderView.jsx, permissions/*}`, `navigation/{menuConfig.js, buildMenu.js}`.
+
 ---
 
 ## 1. Relevamiento del código actual
