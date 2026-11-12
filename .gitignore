@@ -1,0 +1,21 @@
+# Secretos: nunca se versionan (ver backend/.env.example)
+.env
+**/.env
+.env.*
+!**/.env.example
+
+# Python
+__pycache__/
+*.pyc
+.ruff_cache/
+.pytest_cache/
+
+# Claude Code: configuración personal y resultados de evaluaciones de skills
+.claude/settings.local.json
+.claude/skills/*-workspace/
+**/evals/results/
+
+# Editores / SO
+.vscode/
+.idea/
+.DS_Store

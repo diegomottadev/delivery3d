@@ -1,0 +1,25 @@
+{
+  "enabledPlugins": {
+    "workflow-ssd@workflow-ssd-marketplace": true
+  },
+  "permissions": {
+    "deny": [
+      "Read(**/.env)",
+      "Edit(**/.env)",
+      "Write(**/.env)",
+      "Bash(cat *.env)",
+      "Bash(less *.env)",
+      "Bash(more *.env)",
+      "Bash(head *.env)",
+      "Bash(tail *.env)",
+      "Bash(grep *.env)",
+      "Bash(sed *.env)",
+      "Bash(awk *.env)",
+      "Bash(env)",
+      "Bash(printenv*)",
+      "Bash(docker inspect*)",
+      "Bash(docker exec * env*)",
+      "Bash(docker compose config*)"
+    ]
+  }
+}

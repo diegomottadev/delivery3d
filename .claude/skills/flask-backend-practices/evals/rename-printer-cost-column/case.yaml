@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: rename-printer-cost-column
+expected_outcome: |
+  Migración con op.alter_column(new_column_name=...) y existing_type, manejando el CHECK chk_printers_cost_per_hour que MySQL 8 no deja ignorar; downgrade simétrico; actualiza todos los usos backend y avisa del contrato JSON/frontend y la compatibilidad.

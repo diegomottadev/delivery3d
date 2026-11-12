@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: audit-printers-module
+expected_outcome: |
+  Auditoría por categorías con archivo:línea: la ruta toca el ORM y hace commit, devuelve str(exc) en 500, valida con if/try en el handler; propone validate_printer en schemas.py y create_printer en services.py sin agregar Pydantic.

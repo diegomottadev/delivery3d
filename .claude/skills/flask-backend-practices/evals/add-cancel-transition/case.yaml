@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: add-cancel-transition
+expected_outcome: |
+  Detecta que cancelado quedó fuera de alcance a propósito en state_machine.py/openspec y plantea las preguntas de negocio (desde qué estados, qué pasa con la seña); implementa vía state_machine con UPDATE condicional y tests con los fixtures del proyecto.

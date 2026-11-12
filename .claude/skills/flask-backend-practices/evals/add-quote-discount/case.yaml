@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: add-quote-discount
+expected_outcome: |
+  Revisa openspec y propone criterios de aceptación; calcula en pricing.py con Decimal y ROUND_HALF_UP; migración Numeric revisada; tests escritos primero; avisa el impacto en el frontend.
