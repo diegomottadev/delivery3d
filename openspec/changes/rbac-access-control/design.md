@@ -212,6 +212,58 @@ Se define como `frozenset` literal, no como "todo menos…": un permiso nuevo **
 ### Preguntas de la etapa 3 (abiertas)
 - **E3-6:** con `orders:quote` el operador fija margen, costos de energía y máquina, y precio informado **por pedido**. ¿Es aceptable, porque presupuestar es su tarea? ¿O hay que forzar que esos valores salgan de `workshop_settings` cuando el actor no tiene `settings:update`? Esto último sería lógica en `calculate_quote`; se trataría en la etapa 5.
 
+## Etapa 4 — tests en rojo (HECHO, pendiente etapa 5)
+
+E3-6: el usuario eligió la **opción B**. Sus tests se escriben en esta etapa; la implementación va en la etapa 5.
+
+### Contratos que fijan los tests (la etapa 5 los implementa sin tocar los tests)
+
+**`app.rbac.services.get_effective_permissions(user_id) -> frozenset[str]`**
+- Une los permisos de los roles que el usuario recibe por grupo y por asignación directa.
+- Ignora `is_superuser`.
+
+**`app.rbac.security.permission_required(*perms)`**
+- Envuelve `login_required`, así que un usuario inactivo recibe 401 aunque sea superusuario.
+- Exige todos los permisos (AND). Al superusuario lo deja pasar.
+- Si falta alguno → `403 {"error": "Acceso denegado: permisos insuficientes", "code": "FORBIDDEN"}`.
+
+**`app.rbac.security.get_user_permissions() -> frozenset[str]`**
+- Devuelve los permisos del usuario actual.
+- Los cachea en `flask.g`: dentro de un request devuelve el mismo objeto; en el request siguiente se recalcula.
+- Para un superusuario devuelve el catálogo completo.
+
+**`GET /api/auth/me/permissions`** — según `api-contract.md` §1.
+
+**Opción B en `POST /api/orders/<id>/quote`** — se aplica si el actor no tiene `settings:update` y no es superusuario. Regla del usuario: "usa siempre los COSTOS y el margen del taller".
+
+Del body se ignoran estos campos y se reemplazan así:
+
+| Campo | Valor que se usa |
+|---|---|
+| `kwh_cost` | `workshop_settings.kwh_cost` |
+| `profit_margin_pct`, `profit_multiplier` | margen = `(profit_multiplier - 1) * 100` de `workshop_settings` |
+| `waste_purge_pct` | `workshop_settings.waste_purge_pct` |
+| `labor_cost_per_hour` | `workshop_settings.labor_cost_per_hour` |
+| `labor_cost` (monto fijo) | se ignora; siempre se calcula como `tarifa por hora × labor_time_minutes / 60` |
+| `machine_power_watts`, `machine_cost_per_hour` | los de la impresora elegida (`printer_id`); si no eligió, los de `default_printer_id` |
+
+Lo que sí se acepta del body:
+- `printer_id`. Si no lo manda, se guarda la impresora por defecto. Si no hay impresora elegida ni por defecto → 422 con `errors.printer_id`.
+- `labor_time_minutes`, porque es el esfuerzo de cada pedido y no un costo del taller. Si no lo manda, se usa `workshop_settings.default_labor_time_minutes`.
+- `informed_price` en `quote/confirm`.
+
+Con `settings:update`, el body se respeta completo.
+
+### Archivos
+| Archivo | Tests | Qué cubre |
+|---|---|---|
+| `backend/tests/rbac/conftest.py` | — | `RbacFactory` (usuarios, roles, grupos y asignaciones de prueba; nunca usa el id=1). `guarded_app`: una app aparte con un blueprint `/_test/rbac/*` protegido, para no proteger todavía las rutas reales. |
+| `test_rbac_effective_permissions.py` | 8 | Resolución de permisos. |
+| `test_rbac_permission_required.py` | 14 | El decorador y el cache. |
+| `test_rbac_me_permissions.py` | 5 | `GET /api/auth/me/permissions`. |
+| `test_rbac_quote_pricing_lock.py` | 10 | Opción B. |
+| `test_rbac_perms_frontend_sync.py` | 2 | Sincronía con `perms.js`. |
+
 ## Involved Files (real paths)
 Relevados para esta etapa (no se modifican en la etapa 1):
 - `backend/app/auth/models.py` — `User` (`id`, `username`, `password_hash`, `role VARCHAR(20)`, `is_active`, `created_at`; **sin** `is_superuser` ni `updated_at`).
