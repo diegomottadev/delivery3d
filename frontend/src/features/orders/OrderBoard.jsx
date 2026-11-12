@@ -17,6 +17,9 @@ import {
 import { getStatusSeverity } from './OrderList';
 import OrderIntakeForm from './OrderIntakeForm';
 import QuoteModal from './QuoteModal';
+import { Can } from '../security/permissions/Can';
+import { usePermissions } from '../security/permissions/PermissionsContext';
+import { PERM } from '../security/permissions/perms';
 
 const COLUMNS = [
     { key: 'nuevo', title: 'Por Cotizar', severity: 'info', icon: 'pi-inbox' },
@@ -28,6 +31,9 @@ const COLUMNS = [
 ];
 
 const OrderBoard = ({ onOrderStateChanged, isSplitView = false, showHeader = true, extraActions = null }) => {
+    // Ocultar acciones es solo UX: el backend valida cada permiso (403).
+    const { can } = usePermissions();
+    const canQuote = can(PERM.ORDERS_QUOTE);
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showIntakeModal, setShowIntakeModal] = useState(false);
@@ -239,12 +245,14 @@ const OrderBoard = ({ onOrderStateChanged, isSplitView = false, showHeader = tru
                             loading={loading}
                             onClick={loadOrders}
                         />
-                        <Button
-                            label="Nuevo Pedido"
-                            icon="pi pi-plus"
-                            className="p-button-sm p-button-primary font-bold"
-                            onClick={() => setShowIntakeModal(true)}
-                        />
+                        <Can perm={PERM.ORDERS_CREATE}>
+                            <Button
+                                label="Nuevo Pedido"
+                                icon="pi pi-plus"
+                                className="p-button-sm p-button-primary font-bold"
+                                onClick={() => setShowIntakeModal(true)}
+                            />
+                        </Can>
                         {extraActions}
                     </div>
                 </div>
@@ -282,35 +290,44 @@ const OrderBoard = ({ onOrderStateChanged, isSplitView = false, showHeader = tru
                                             <div className="flex justify-content-between align-items-center mb-1">
                                                 <span className="font-bold text-sm">#{ord.id}</span>
                                                 <div className="flex gap-1">
-                                                    <Button
-                                                        icon="pi pi-pencil"
-                                                        className="p-button-rounded p-button-text p-button-primary p-button-xs"
-                                                        tooltip="Editar Pedido"
-                                                        tooltipOptions={{ position: 'top' }}
-                                                        onClick={() => setSelectedOrderForEdit(ord)}
-                                                    />
-                                                    <Button
-                                                        icon="pi pi-calculator"
-                                                        className="p-button-rounded p-button-text p-button-warning p-button-xs"
-                                                        tooltip="Cotizar / Ver Cálculo"
-                                                        tooltipOptions={{ position: 'top' }}
-                                                        onClick={() => setSelectedOrderForQuote(ord)}
-                                                    />
+                                                    <Can perm={PERM.ORDERS_UPDATE}>
+                                                        <Button
+                                                            icon="pi pi-pencil"
+                                                            className="p-button-rounded p-button-text p-button-primary p-button-xs"
+                                                            tooltip="Editar Pedido"
+                                                            tooltipOptions={{ position: 'top' }}
+                                                            data-testid={`edit-order-${ord.id}`}
+                                                            onClick={() => setSelectedOrderForEdit(ord)}
+                                                        />
+                                                    </Can>
+                                                    <Can perm={PERM.ORDERS_QUOTE}>
+                                                        <Button
+                                                            icon="pi pi-calculator"
+                                                            className="p-button-rounded p-button-text p-button-warning p-button-xs"
+                                                            tooltip="Cotizar / Ver Cálculo"
+                                                            tooltipOptions={{ position: 'top' }}
+                                                            data-testid={`quote-order-${ord.id}`}
+                                                            onClick={() => setSelectedOrderForQuote(ord)}
+                                                        />
+                                                    </Can>
                                                     <Button
                                                         icon="pi pi-history"
                                                         className="p-button-rounded p-button-text p-button-secondary p-button-xs"
                                                         tooltip="Ver Historial"
                                                         tooltipOptions={{ position: 'top' }}
+                                                        data-testid={`history-order-${ord.id}`}
                                                         onClick={() => handleShowHistory(ord.id)}
                                                     />
-                                                    <Button
-                                                        icon="pi pi-trash"
-                                                        className="p-button-rounded p-button-text p-button-danger p-button-xs"
-                                                        tooltip="Eliminar Pedido"
-                                                        tooltipOptions={{ position: 'top' }}
-                                                        data-testid={`delete-order-${ord.id}`}
-                                                        onClick={() => setOrderToDelete(ord)}
-                                                    />
+                                                    <Can perm={PERM.ORDERS_DELETE}>
+                                                        <Button
+                                                            icon="pi pi-trash"
+                                                            className="p-button-rounded p-button-text p-button-danger p-button-xs"
+                                                            tooltip="Eliminar Pedido"
+                                                            tooltipOptions={{ position: 'top' }}
+                                                            data-testid={`delete-order-${ord.id}`}
+                                                            onClick={() => setOrderToDelete(ord)}
+                                                        />
+                                                    </Can>
                                                 </div>
                                             </div>
 
@@ -324,9 +341,9 @@ const OrderBoard = ({ onOrderStateChanged, isSplitView = false, showHeader = tru
 
                                             {ord.pricing && (
                                                 <div
-                                                    className="text-xs mb-2 cursor-pointer hover:surface-200 p-1 border-round transition-duration-150 inline-block"
-                                                    title="Clic para ver o recalcular cotización"
-                                                    onClick={() => setSelectedOrderForQuote(ord)}
+                                                    className={`text-xs mb-2 p-1 border-round inline-block${canQuote ? ' cursor-pointer hover:surface-200 transition-duration-150' : ''}`}
+                                                    title={canQuote ? 'Clic para ver o recalcular cotización' : undefined}
+                                                    onClick={canQuote ? () => setSelectedOrderForQuote(ord) : undefined}
                                                 >
                                                     {ord.pricing.informed_price ? (
                                                         <span className="font-bold text-green-600 hover:underline">
@@ -341,7 +358,7 @@ const OrderBoard = ({ onOrderStateChanged, isSplitView = false, showHeader = tru
                                             )}
 
                                             <div className="flex flex-column gap-1 mt-2">
-                                                {ord.status === 'nuevo' && (
+                                                {ord.status === 'nuevo' && can(PERM.ORDERS_QUOTE) && (
                                                     <Button
                                                         label="Cotizar"
                                                         icon="pi pi-calculator"
@@ -350,7 +367,7 @@ const OrderBoard = ({ onOrderStateChanged, isSplitView = false, showHeader = tru
                                                     />
                                                 )}
 
-                                                {ord.status === 'presupuestado' && (
+                                                {ord.status === 'presupuestado' && can(PERM.ORDERS_APPROVE) && (
                                                     <Button
                                                         label="Aprobar"
                                                         icon="pi pi-check"
@@ -362,7 +379,7 @@ const OrderBoard = ({ onOrderStateChanged, isSplitView = false, showHeader = tru
                                                     />
                                                 )}
 
-                                                {ord.status === 'aprobado' && (
+                                                {ord.status === 'aprobado' && can(PERM.ORDERS_PRODUCE) && (
                                                     <Button
                                                         label="Imprimir"
                                                         icon="pi pi-play"
@@ -371,7 +388,7 @@ const OrderBoard = ({ onOrderStateChanged, isSplitView = false, showHeader = tru
                                                     />
                                                 )}
 
-                                                {ord.status === 'imprimiendo' && (
+                                                {ord.status === 'imprimiendo' && can(PERM.ORDERS_PRODUCE) && (
                                                     <Button
                                                         label="Marcar Listo"
                                                         icon="pi pi-box"
@@ -380,7 +397,7 @@ const OrderBoard = ({ onOrderStateChanged, isSplitView = false, showHeader = tru
                                                     />
                                                 )}
 
-                                                {ord.status === 'listo' && (
+                                                {ord.status === 'listo' && can(PERM.ORDERS_DELIVER) && (
                                                     <Button
                                                         label="Entregar"
                                                         icon="pi pi-check-circle"

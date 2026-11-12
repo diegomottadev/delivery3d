@@ -1,4 +1,5 @@
-import { buildMenu, buildBreadcrumb } from './buildMenu';
+import { buildMenu, buildBreadcrumb, guardFor } from './buildMenu';
+import { OPERATOR_PERMISSIONS } from '../features/security/permissions/permissionsTestUtils';
 import { MENU_CONFIG } from './menuConfig';
 import { PERM } from '../features/security/permissions/perms';
 
@@ -72,16 +73,48 @@ describe('MENU_CONFIG', () => {
         securityGroup.items.forEach((item) => expect(item.perm).toBe(PERM.RBAC_READ));
     });
 
-    test('un usuario sin permisos ve el menú del taller pero no Seguridad', () => {
-        const menu = buildMenu(MENU_CONFIG, () => false);
+    test('todos los ítems del taller declaran perm o anyOf con códigos del enum', () => {
+        const taller = MENU_CONFIG.find((g) => g.label === 'Delivery3D - Taller');
+        expect(taller.items.map((i) => [i.path, i.perm || i.anyOf])).toEqual([
+            ['/', [PERM.ORDERS_READ, PERM.CASH_MOVEMENTS_READ]],
+            ['/orders', PERM.ORDERS_READ],
+            ['/cashbox', PERM.CASH_MOVEMENTS_READ],
+            ['/cashbox/settings', PERM.CASH_CATEGORIES_READ],
+            ['/settings', PERM.SETTINGS_READ],
+        ]);
+    });
+
+    test('un usuario sin permisos no ve ningún grupo del menú', () => {
+        expect(buildMenu(MENU_CONFIG, () => false)).toEqual([]);
+    });
+
+    test('el rol Operador ve todo el taller y no ve Seguridad', () => {
+        const menu = buildMenu(MENU_CONFIG, canWith(OPERATOR_PERMISSIONS));
         expect(menu.map((g) => g.label)).toEqual(['Delivery3D - Taller']);
         expect(menu[0].items.map((i) => i.to)).toEqual(['/', '/orders', '/cashbox', '/cashbox/settings', '/settings']);
+    });
+
+    test('anyOf: el tablero aparece con solo uno de sus permisos', () => {
+        const menu = buildMenu(MENU_CONFIG, canWith([PERM.CASH_MOVEMENTS_READ]));
+        expect(menu[0].items.map((i) => i.to)).toEqual(['/', '/cashbox']);
+    });
+});
+
+describe('guardFor', () => {
+    test('devuelve las props de RequirePermission del ítem de la config', () => {
+        expect(guardFor(MENU_CONFIG, '/orders')).toEqual({ perm: PERM.ORDERS_READ });
+        expect(guardFor(MENU_CONFIG, '/')).toEqual({ anyOf: [PERM.ORDERS_READ, PERM.CASH_MOVEMENTS_READ] });
+    });
+
+    test('lanza si la ruta no está en la config (evita rutas sin guard por error)', () => {
+        expect(() => guardFor(MENU_CONFIG, '/no-existe')).toThrow(/no-existe/);
     });
 });
 
 describe('buildBreadcrumb', () => {
     test('deriva las entradas del breadcrumb de la config (usa breadcrumbLabel si existe)', () => {
         const crumbs = buildBreadcrumb(MENU_CONFIG);
+        expect(crumbs.every((c) => !('perm' in c) && !('anyOf' in c))).toBe(true);
         expect(crumbs).toContainEqual({ path: '/', parent: 'Delivery3D', label: 'Tablero Operativo y Finanzas' });
         expect(crumbs).toContainEqual({ path: '/seguridad/usuarios', parent: 'Seguridad', label: 'Usuarios' });
     });

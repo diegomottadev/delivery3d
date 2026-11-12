@@ -16,6 +16,8 @@ import {
     getCashIncomeCategories,
     getCashExpenseCategories,
 } from './cashboxApi';
+import { Can } from '../security/permissions/Can';
+import { PERM } from '../security/permissions/perms';
 
 const DEFAULT_EGRESO_CATEGORIES = [
     { label: 'Filamento', value: 'filamento' },
@@ -232,13 +234,15 @@ const CashboxCompactWidget = forwardRef(({ onMovementCreated }, ref) => {
                     <span className="text-base font-bold text-green-700 block my-1">
                         {formatMoney(summary.total_ingresos)}
                     </span>
-                    <Button
-                        label="Ingreso"
-                        icon="pi pi-plus"
-                        className="p-button-success p-button-sm p-button-outlined w-full font-bold mt-1"
-                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.85rem' }}
-                        onClick={() => openNewMovement('ingreso')}
-                    />
+                    <Can perm={PERM.CASH_MOVEMENTS_CREATE}>
+                        <Button
+                            label="Ingreso"
+                            icon="pi pi-plus"
+                            className="p-button-success p-button-sm p-button-outlined w-full font-bold mt-1"
+                            style={{ padding: '0.35rem 0.5rem', fontSize: '0.85rem' }}
+                            onClick={() => openNewMovement('ingreso')}
+                        />
+                    </Can>
                 </div>
 
                 {/* Egresos */}
@@ -247,13 +251,15 @@ const CashboxCompactWidget = forwardRef(({ onMovementCreated }, ref) => {
                     <span className="text-base font-bold text-red-700 block my-1">
                         {formatMoney(summary.total_egresos)}
                     </span>
-                    <Button
-                        label="Egreso"
-                        icon="pi pi-minus"
-                        className="p-button-danger p-button-sm p-button-outlined w-full font-bold mt-1"
-                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.85rem' }}
-                        onClick={() => openNewMovement('egreso')}
-                    />
+                    <Can perm={PERM.CASH_MOVEMENTS_CREATE}>
+                        <Button
+                            label="Egreso"
+                            icon="pi pi-minus"
+                            className="p-button-danger p-button-sm p-button-outlined w-full font-bold mt-1"
+                            style={{ padding: '0.35rem 0.5rem', fontSize: '0.85rem' }}
+                            onClick={() => openNewMovement('egreso')}
+                        />
+                    </Can>
                 </div>
             </div>
 

@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { renderAsSuperuser } from '../security/permissions/permissionsTestUtils';
 import OrderBoard from './OrderBoard';
 import * as ordersApi from './ordersApi';
 
@@ -42,7 +43,7 @@ describe('OrderBoard', () => {
     });
 
     test('renders kanban columns and distributes orders', async () => {
-        render(<OrderBoard />);
+        renderAsSuperuser(<OrderBoard />);
 
         await waitFor(() => {
             expect(screen.getByText(/Engranaje/i)).toBeInTheDocument();
@@ -59,7 +60,7 @@ describe('OrderBoard', () => {
     test('advancing approved order to printing calls startPrinting', async () => {
         ordersApi.startPrinting.mockResolvedValueOnce({ id: 3, status: 'imprimiendo' });
 
-        render(<OrderBoard />);
+        renderAsSuperuser(<OrderBoard />);
 
         await waitFor(() => {
             expect(screen.getByText(/Llavero/i)).toBeInTheDocument();
@@ -80,7 +81,7 @@ describe('OrderBoard', () => {
         });
         ordersApi.listPrinters.mockResolvedValue([]);
 
-        render(<OrderBoard />);
+        renderAsSuperuser(<OrderBoard />);
 
         await waitFor(() => {
             expect(screen.getByText(/Vaso/i)).toBeInTheDocument();
@@ -98,7 +99,7 @@ describe('OrderBoard', () => {
     test('delivering an order opens confirmation dialog and calls deliverOrder with collect_balance', async () => {
         ordersApi.deliverOrder.mockResolvedValueOnce({ id: 4, status: 'entregado' });
 
-        render(<OrderBoard />);
+        renderAsSuperuser(<OrderBoard />);
 
         await waitFor(() => {
             expect(screen.getByText(/Soporte/i)).toBeInTheDocument();
@@ -121,7 +122,7 @@ describe('OrderBoard', () => {
     test('clicking delete button opens confirmation dialog and confirms deletion', async () => {
         ordersApi.deleteOrder.mockResolvedValueOnce({ message: 'Pedido 1 eliminado correctamente.' });
 
-        render(<OrderBoard />);
+        renderAsSuperuser(<OrderBoard />);
 
         await waitFor(() => {
             expect(screen.getByText(/Engranaje/i)).toBeInTheDocument();
@@ -150,7 +151,7 @@ describe('OrderBoard', () => {
     });
 
     test('canceling deletion does not call deleteOrder', async () => {
-        render(<OrderBoard />);
+        renderAsSuperuser(<OrderBoard />);
 
         await waitFor(() => {
             expect(screen.getByText(/Engranaje/i)).toBeInTheDocument();

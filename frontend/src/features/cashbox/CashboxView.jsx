@@ -18,6 +18,8 @@ import {
     getCashIncomeCategories,
     getCashExpenseCategories,
 } from './cashboxApi';
+import { Can } from '../security/permissions/Can';
+import { PERM } from '../security/permissions/perms';
 
 const TYPE_FILTER_OPTIONS = [
     { label: 'Todos', value: 'all' },
@@ -245,12 +247,14 @@ const CashboxView = () => {
                     </span>
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                    <Button
-                        label="Categorías"
-                        icon="pi pi-sliders-h"
-                        className="p-button-outlined p-button-secondary p-button-sm"
-                        onClick={() => navigate('/cashbox/settings')}
-                    />
+                    <Can perm={PERM.CASH_CATEGORIES_READ}>
+                        <Button
+                            label="Categorías"
+                            icon="pi pi-sliders-h"
+                            className="p-button-outlined p-button-secondary p-button-sm"
+                            onClick={() => navigate('/cashbox/settings')}
+                        />
+                    </Can>
                     <Button
                         label="Actualizar"
                         icon="pi pi-refresh"
@@ -258,18 +262,20 @@ const CashboxView = () => {
                         loading={loading}
                         onClick={loadData}
                     />
-                    <Button
-                        label="Registrar Ingreso"
-                        icon="pi pi-plus"
-                        className="p-button-sm p-button-success"
-                        onClick={() => openNewMovement('ingreso')}
-                    />
-                    <Button
-                        label="Registrar Egreso"
-                        icon="pi pi-minus"
-                        className="p-button-sm p-button-danger"
-                        onClick={() => openNewMovement('egreso')}
-                    />
+                    <Can perm={PERM.CASH_MOVEMENTS_CREATE}>
+                        <Button
+                            label="Registrar Ingreso"
+                            icon="pi pi-plus"
+                            className="p-button-sm p-button-success"
+                            onClick={() => openNewMovement('ingreso')}
+                        />
+                        <Button
+                            label="Registrar Egreso"
+                            icon="pi pi-minus"
+                            className="p-button-sm p-button-danger"
+                            onClick={() => openNewMovement('egreso')}
+                        />
+                    </Can>
                 </div>
             </div>
 

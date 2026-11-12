@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { renderAsSuperuser } from '../security/permissions/permissionsTestUtils';
 import { BrowserRouter } from 'react-router-dom';
 import SplitDashboardView from './SplitDashboardView';
 import * as ordersApi from '../orders/ordersApi';
@@ -38,7 +39,7 @@ describe('SplitDashboardView', () => {
     });
 
     test('renders split screen with both order board and cashbox widget', async () => {
-        render(
+        renderAsSuperuser(
             <BrowserRouter>
                 <SplitDashboardView />
             </BrowserRouter>
@@ -55,7 +56,7 @@ describe('SplitDashboardView', () => {
     });
 
     test('toggles view mode from split to full kanban and hides cashbox widget', async () => {
-        render(
+        renderAsSuperuser(
             <BrowserRouter>
                 <SplitDashboardView />
             </BrowserRouter>

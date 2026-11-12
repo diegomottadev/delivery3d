@@ -17,6 +17,8 @@ import {
     createCashExpenseCategory,
     updateCashExpenseCategory,
 } from './cashboxApi';
+import { Can } from '../security/permissions/Can';
+import { PERM } from '../security/permissions/perms';
 
 const CashboxSettingsView = () => {
     const toast = useRef(null);
@@ -228,12 +230,14 @@ const CashboxSettingsView = () => {
                             <span className="text-600 font-semibold">
                                 Categorías habilitadas para cobros de señas, saldos e ingresos extraordinarios
                             </span>
-                            <Button
-                                label="Nueva Forma de Ingreso"
-                                icon="pi pi-plus"
-                                className="p-button-sm p-button-success"
-                                onClick={() => openCreateDialog('income')}
-                            />
+                            <Can perm={PERM.CASH_CATEGORIES_CREATE}>
+                                <Button
+                                    label="Nueva Forma de Ingreso"
+                                    icon="pi pi-plus"
+                                    className="p-button-sm p-button-success"
+                                    onClick={() => openCreateDialog('income')}
+                                />
+                            </Can>
                         </div>
 
                         <DataTable
@@ -251,12 +255,15 @@ const CashboxSettingsView = () => {
                             <Column
                                 header="Acciones"
                                 body={(rowData) => (
-                                    <Button
-                                        icon="pi pi-pencil"
-                                        className="p-button-text p-button-sm p-button-rounded"
-                                        tooltip="Editar"
-                                        onClick={() => openEditDialog(rowData, 'income')}
-                                    />
+                                    <Can perm={PERM.CASH_CATEGORIES_UPDATE}>
+                                        <Button
+                                            icon="pi pi-pencil"
+                                            className="p-button-text p-button-sm p-button-rounded"
+                                            tooltip="Editar"
+                                            data-testid={`edit-category-income-${rowData.id}`}
+                                            onClick={() => openEditDialog(rowData, 'income')}
+                                        />
+                                    </Can>
                                 )}
                                 style={{ width: '80px', textAlign: 'center' }}
                             />
@@ -269,12 +276,14 @@ const CashboxSettingsView = () => {
                             <span className="text-600 font-semibold">
                                 Categorías habilitadas para compra de filamentos, repuestos A1, servicios y embalaje
                             </span>
-                            <Button
-                                label="Nueva Forma de Egreso"
-                                icon="pi pi-plus"
-                                className="p-button-sm p-button-danger"
-                                onClick={() => openCreateDialog('expense')}
-                            />
+                            <Can perm={PERM.CASH_CATEGORIES_CREATE}>
+                                <Button
+                                    label="Nueva Forma de Egreso"
+                                    icon="pi pi-plus"
+                                    className="p-button-sm p-button-danger"
+                                    onClick={() => openCreateDialog('expense')}
+                                />
+                            </Can>
                         </div>
 
                         <DataTable
@@ -292,12 +301,15 @@ const CashboxSettingsView = () => {
                             <Column
                                 header="Acciones"
                                 body={(rowData) => (
-                                    <Button
-                                        icon="pi pi-pencil"
-                                        className="p-button-text p-button-sm p-button-rounded"
-                                        tooltip="Editar"
-                                        onClick={() => openEditDialog(rowData, 'expense')}
-                                    />
+                                    <Can perm={PERM.CASH_CATEGORIES_UPDATE}>
+                                        <Button
+                                            icon="pi pi-pencil"
+                                            className="p-button-text p-button-sm p-button-rounded"
+                                            tooltip="Editar"
+                                            data-testid={`edit-category-expense-${rowData.id}`}
+                                            onClick={() => openEditDialog(rowData, 'expense')}
+                                        />
+                                    </Can>
                                 )}
                                 style={{ width: '80px', textAlign: 'center' }}
                             />

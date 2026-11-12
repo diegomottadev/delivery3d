@@ -2,7 +2,8 @@ import { PERM } from '../features/security/permissions/perms';
 
 /**
  * Única fuente del side menu y del breadcrumb.
- * Ítem: { label, icon, path, perm?, breadcrumbLabel? }. Sin `perm` = visible con solo estar logueado.
+ * Ítem: { label, icon, path, perm | anyOf, breadcrumbLabel? }. El permiso es el del endpoint principal
+ * de la pantalla y protege tanto el ítem del menú como la ruta (ver guardFor).
  */
 export const MENU_CONFIG = Object.freeze([
     {
@@ -10,11 +11,11 @@ export const MENU_CONFIG = Object.freeze([
         icon: 'pi pi-fw pi-box',
         breadcrumbParent: 'Delivery3D',
         items: [
-            { label: 'Tablero y Finanzas (Split)', icon: 'pi pi-fw pi-th-large', path: '/', breadcrumbLabel: 'Tablero Operativo y Finanzas' },
-            { label: 'Listado de Pedidos', icon: 'pi pi-fw pi-list', path: '/orders' },
-            { label: 'Caja Diaria y Finanzas', icon: 'pi pi-fw pi-wallet', path: '/cashbox' },
-            { label: 'Configuración de Caja', icon: 'pi pi-fw pi-sliders-h', path: '/cashbox/settings' },
-            { label: 'Configuración del Taller', icon: 'pi pi-fw pi-cog', path: '/settings' },
+            { label: 'Tablero y Finanzas (Split)', icon: 'pi pi-fw pi-th-large', path: '/', anyOf: [PERM.ORDERS_READ, PERM.CASH_MOVEMENTS_READ], breadcrumbLabel: 'Tablero Operativo y Finanzas' },
+            { label: 'Listado de Pedidos', icon: 'pi pi-fw pi-list', path: '/orders', perm: PERM.ORDERS_READ },
+            { label: 'Caja Diaria y Finanzas', icon: 'pi pi-fw pi-wallet', path: '/cashbox', perm: PERM.CASH_MOVEMENTS_READ },
+            { label: 'Configuración de Caja', icon: 'pi pi-fw pi-sliders-h', path: '/cashbox/settings', perm: PERM.CASH_CATEGORIES_READ },
+            { label: 'Configuración del Taller', icon: 'pi pi-fw pi-cog', path: '/settings', perm: PERM.SETTINGS_READ },
         ],
     },
     {

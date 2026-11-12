@@ -10,7 +10,11 @@ import { Column } from 'primereact/column';
 import { Dialog } from 'primereact/dialog';
 import { Tag } from 'primereact/tag';
 import { Toast } from 'primereact/toast';
+import { Message } from 'primereact/message';
 import { getSettings, updateSettings, listPrinters, createPrinter, updatePrinter } from '../orders/ordersApi';
+import { Can } from '../security/permissions/Can';
+import { usePermissions } from '../security/permissions/PermissionsContext';
+import { PERM } from '../security/permissions/perms';
 
 const MULTIPLIER_OPTIONS = [
     { label: 'x2', value: 2 },
@@ -31,6 +35,9 @@ export const CURRENCY_PRESETS = [
 ];
 
 const WorkshopSettingsView = () => {
+    // Sin settings:update la configuración es de solo lectura (el backend responde 403 igual).
+    const { can } = usePermissions();
+    const canEditSettings = can(PERM.SETTINGS_UPDATE);
     const toast = useRef(null);
 
     // Settings state
@@ -253,7 +260,7 @@ const WorkshopSettingsView = () => {
                                         }
                                     }}
                                     placeholder="Elegir moneda..."
-                                    disabled={loadingSettings}
+                                    disabled={loadingSettings || !canEditSettings}
                                 />
                             </div>
                             <div className="grid">
@@ -265,7 +272,7 @@ const WorkshopSettingsView = () => {
                                         onChange={(e) => setSettings({ ...settings, currency_code: e.target.value.toUpperCase() })}
                                         maxLength={3}
                                         placeholder="ARS"
-                                        disabled={loadingSettings}
+                                        disabled={loadingSettings || !canEditSettings}
                                     />
                                 </div>
                                 <div className="col-6">
@@ -276,7 +283,7 @@ const WorkshopSettingsView = () => {
                                         onChange={(e) => setSettings({ ...settings, currency_symbol: e.target.value })}
                                         maxLength={10}
                                         placeholder="AR$"
-                                        disabled={loadingSettings}
+                                        disabled={loadingSettings || !canEditSettings}
                                     />
                                 </div>
                             </div>
@@ -288,13 +295,13 @@ const WorkshopSettingsView = () => {
                         <div className="field mb-3">
                             <label htmlFor="kwh_cost" className="font-semibold">Costo kWh de Electricidad ({settings.currency_symbol})</label>
                             <InputNumber
-                                id="kwh_cost"
+                                inputId="kwh_cost"
                                 value={settings.kwh_cost}
                                 onValueChange={(e) => setSettings({ ...settings, kwh_cost: e.value })}
                                 mode="currency"
                                 currency="ARS"
                                 locale="es-AR"
-                                disabled={loadingSettings}
+                                disabled={loadingSettings || !canEditSettings}
                             />
                             <small className="text-500">Valor fijo por defecto de electricidad para el cálculo de consumo.</small>
                         </div>
@@ -302,13 +309,13 @@ const WorkshopSettingsView = () => {
                         <div className="field mb-3">
                             <label htmlFor="waste_purge_pct" className="font-semibold">Merma / Purga Predeterminada (%)</label>
                             <InputNumber
-                                id="waste_purge_pct"
+                                inputId="waste_purge_pct"
                                 value={settings.waste_purge_pct}
                                 onValueChange={(e) => setSettings({ ...settings, waste_purge_pct: e.value })}
                                 suffix="%"
                                 min={0}
                                 max={100}
-                                disabled={loadingSettings}
+                                disabled={loadingSettings || !canEditSettings}
                             />
                             <small className="text-500">Porcentaje de pérdida o purga de filamento por impresión.</small>
                         </div>
@@ -316,13 +323,13 @@ const WorkshopSettingsView = () => {
                         <div className="field mb-3">
                             <label htmlFor="labor_cost_per_hour" className="font-semibold">Tarifa Mano de Obra ($/h)</label>
                             <InputNumber
-                                id="labor_cost_per_hour"
+                                inputId="labor_cost_per_hour"
                                 value={settings.labor_cost_per_hour}
                                 onValueChange={(e) => setSettings({ ...settings, labor_cost_per_hour: e.value })}
                                 mode="currency"
                                 currency="ARS"
                                 locale="es-AR"
-                                disabled={loadingSettings}
+                                disabled={loadingSettings || !canEditSettings}
                             />
                             <small className="text-500">Tarifa horaria para cálculo de mano de obra del operador.</small>
                         </div>
@@ -330,13 +337,13 @@ const WorkshopSettingsView = () => {
                         <div className="field mb-3">
                             <label htmlFor="default_labor_time_minutes" className="font-semibold">Tiempo Mano de Obra por Defecto (Minutos)</label>
                             <InputNumber
-                                id="default_labor_time_minutes"
+                                inputId="default_labor_time_minutes"
                                 value={settings.default_labor_time_minutes}
                                 onValueChange={(e) => setSettings({ ...settings, default_labor_time_minutes: e.value })}
                                 suffix=" min"
                                 showButtons
                                 min={0}
-                                disabled={loadingSettings}
+                                disabled={loadingSettings || !canEditSettings}
                             />
                             <small className="text-500">
                                 Tiempo estimado base por pedido ({settings.default_labor_time_minutes || 0} min = {((settings.default_labor_time_minutes || 0) / 60).toFixed(2)} h &rarr; Costo base: ${(((settings.labor_cost_per_hour || 0) * (settings.default_labor_time_minutes || 0)) / 60).toFixed(2)}).
@@ -351,7 +358,7 @@ const WorkshopSettingsView = () => {
                                 onChange={(e) => {
                                     if (e.value) setSettings({ ...settings, profit_multiplier: e.value });
                                 }}
-                                disabled={loadingSettings}
+                                disabled={loadingSettings || !canEditSettings}
                                 className="w-full flex"
                             />
                         </div>
@@ -364,18 +371,27 @@ const WorkshopSettingsView = () => {
                                 options={printerOptions}
                                 onChange={(e) => setSettings({ ...settings, default_printer_id: e.value })}
                                 placeholder="Seleccione una impresora"
-                                disabled={loadingSettings}
+                                disabled={loadingSettings || !canEditSettings}
                             />
                             <small className="text-500">Sus especificaciones (potencia y amortización) se asignan automáticamente al cotizar.</small>
                         </div>
 
-                        <Button
-                            label="Guardar Constantes"
-                            icon="pi pi-check"
-                            onClick={handleSaveSettings}
-                            loading={savingSettings}
-                            className="w-full"
-                        />
+                        <Can
+                            perm={PERM.SETTINGS_UPDATE}
+                            fallback={
+                                <div data-testid="settings-readonly">
+                                    <Message severity="info" className="w-full justify-content-start" text="Solo lectura: cambiar la configuración del taller requiere permiso de edición." />
+                                </div>
+                            }
+                        >
+                            <Button
+                                label="Guardar Constantes"
+                                icon="pi pi-check"
+                                onClick={handleSaveSettings}
+                                loading={savingSettings}
+                                className="w-full"
+                            />
+                        </Can>
                     </div>
                 </Card>
             </div>
@@ -387,14 +403,16 @@ const WorkshopSettingsView = () => {
                     subTitle="Gestión de hardware: potencia y costo de amortización por hora (1FN, 2FN, 3FN)"
                     className="h-full"
                 >
-                    <div className="flex justify-content-end mb-3">
-                        <Button
-                            label="Nueva Impresora"
-                            icon="pi pi-plus"
-                            className="p-button-sm p-button-success"
-                            onClick={openNewPrinterDialog}
-                        />
-                    </div>
+                    <Can perm={PERM.PRINTERS_CREATE}>
+                        <div className="flex justify-content-end mb-3">
+                            <Button
+                                label="Nueva Impresora"
+                                icon="pi pi-plus"
+                                className="p-button-sm p-button-success"
+                                onClick={openNewPrinterDialog}
+                            />
+                        </div>
+                    </Can>
 
                     <DataTable
                         value={printers}
@@ -429,13 +447,16 @@ const WorkshopSettingsView = () => {
                         <Column
                             header="Acciones"
                             body={(row) => (
-                                <Button
-                                    icon="pi pi-pencil"
-                                    className="p-button-rounded p-button-text p-button-sm"
-                                    onClick={() => openEditPrinterDialog(row)}
-                                    tooltip="Editar Impresora"
-                                    tooltipOptions={{ position: 'top' }}
-                                />
+                                <Can perm={PERM.PRINTERS_UPDATE}>
+                                    <Button
+                                        icon="pi pi-pencil"
+                                        className="p-button-rounded p-button-text p-button-sm"
+                                        onClick={() => openEditPrinterDialog(row)}
+                                        tooltip="Editar Impresora"
+                                        tooltipOptions={{ position: 'top' }}
+                                        data-testid={`edit-printer-${row.id}`}
+                                    />
+                                </Can>
                             )}
                             style={{ width: '80px', textAlign: 'center' }}
                         />

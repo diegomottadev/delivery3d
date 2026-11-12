@@ -11,6 +11,8 @@ import { useNavigate } from 'react-router-dom';
 import { listOrders, getOrderHistory, deleteOrder } from './ordersApi';
 import OrderIntakeForm from './OrderIntakeForm';
 import QuoteModal from './QuoteModal';
+import { Can } from '../security/permissions/Can';
+import { PERM } from '../security/permissions/perms';
 
 export const getStatusSeverity = (status) => {
     switch (status) {
@@ -224,25 +226,32 @@ const OrderList = ({ onSelectOrder, onQuoteOrder, onTransitionOrder }) => {
     const actionsBodyTemplate = (rowData) => {
         return (
             <div className="flex gap-1 justify-content-end">
-                <Button
-                    icon="pi pi-pencil"
-                    className="p-button-rounded p-button-text p-button-primary p-button-sm"
-                    tooltip="Editar Pedido"
-                    tooltipOptions={{ position: 'top' }}
-                    onClick={() => setSelectedOrderForEdit(rowData)}
-                />
-                <Button
-                    icon="pi pi-calculator"
-                    className="p-button-rounded p-button-text p-button-warning p-button-sm"
-                    tooltip="Cotizar / Ver Cálculo"
-                    tooltipOptions={{ position: 'top' }}
-                    onClick={() => setSelectedOrderForQuote(rowData)}
-                />
+                <Can perm={PERM.ORDERS_UPDATE}>
+                    <Button
+                        icon="pi pi-pencil"
+                        className="p-button-rounded p-button-text p-button-primary p-button-sm"
+                        tooltip="Editar Pedido"
+                        tooltipOptions={{ position: 'top' }}
+                        data-testid={`edit-order-${rowData.id}`}
+                        onClick={() => setSelectedOrderForEdit(rowData)}
+                    />
+                </Can>
+                <Can perm={PERM.ORDERS_QUOTE}>
+                    <Button
+                        icon="pi pi-calculator"
+                        className="p-button-rounded p-button-text p-button-warning p-button-sm"
+                        tooltip="Cotizar / Ver Cálculo"
+                        tooltipOptions={{ position: 'top' }}
+                        data-testid={`quote-order-${rowData.id}`}
+                        onClick={() => setSelectedOrderForQuote(rowData)}
+                    />
+                </Can>
                 <Button
                     icon="pi pi-history"
                     className="p-button-rounded p-button-text p-button-info p-button-sm"
                     tooltip="Ver Historial"
                     tooltipOptions={{ position: 'top' }}
+                    data-testid={`history-order-${rowData.id}`}
                     onClick={() => handleShowHistory(rowData.id)}
                 />
                 <Button
@@ -252,14 +261,16 @@ const OrderList = ({ onSelectOrder, onQuoteOrder, onTransitionOrder }) => {
                     tooltipOptions={{ position: 'top' }}
                     onClick={() => navigate('/')}
                 />
-                <Button
-                    icon="pi pi-trash"
-                    className="p-button-rounded p-button-text p-button-danger p-button-sm"
-                    tooltip="Eliminar Pedido"
-                    tooltipOptions={{ position: 'top' }}
-                    data-testid={`delete-order-${rowData.id}`}
-                    onClick={() => setOrderToDelete(rowData)}
-                />
+                <Can perm={PERM.ORDERS_DELETE}>
+                    <Button
+                        icon="pi pi-trash"
+                        className="p-button-rounded p-button-text p-button-danger p-button-sm"
+                        tooltip="Eliminar Pedido"
+                        tooltipOptions={{ position: 'top' }}
+                        data-testid={`delete-order-${rowData.id}`}
+                        onClick={() => setOrderToDelete(rowData)}
+                    />
+                </Can>
             </div>
         );
     };
@@ -274,12 +285,14 @@ const OrderList = ({ onSelectOrder, onQuoteOrder, onTransitionOrder }) => {
                     className="p-button-outlined p-button-sm"
                     onClick={loadOrders}
                 />
-                <Button
-                    label="Nuevo Pedido"
-                    icon="pi pi-plus"
-                    className="p-button-sm p-button-primary"
-                    onClick={() => setShowIntakeModal(true)}
-                />
+                <Can perm={PERM.ORDERS_CREATE}>
+                    <Button
+                        label="Nuevo Pedido"
+                        icon="pi pi-plus"
+                        className="p-button-sm p-button-primary"
+                        onClick={() => setShowIntakeModal(true)}
+                    />
+                </Can>
             </div>
         </div>
     );

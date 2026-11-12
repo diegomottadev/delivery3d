@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import { renderAsSuperuser } from '../security/permissions/permissionsTestUtils';
 import WorkshopSettingsView from './WorkshopSettingsView';
 import * as ordersApi from '../orders/ordersApi';
 
@@ -29,7 +30,7 @@ describe('WorkshopSettingsView', () => {
     });
 
     test('renders settings, currency section and printers tables', async () => {
-        render(<WorkshopSettingsView />);
+        renderAsSuperuser(<WorkshopSettingsView />);
 
         expect(screen.getByText(/Valores Constantes del Taller/i)).toBeInTheDocument();
         expect(screen.getByText(/Moneda del Taller/i)).toBeInTheDocument();
@@ -55,7 +56,7 @@ describe('WorkshopSettingsView', () => {
         });
 
         const { fireEvent } = require('@testing-library/react');
-        render(<WorkshopSettingsView />);
+        renderAsSuperuser(<WorkshopSettingsView />);
 
         await waitFor(() => {
             expect(screen.getByText('Bambu Lab A1')).toBeInTheDocument();

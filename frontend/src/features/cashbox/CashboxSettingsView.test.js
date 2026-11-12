@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { renderAsSuperuser } from '../security/permissions/permissionsTestUtils';
 import CashboxSettingsView from './CashboxSettingsView';
 import * as cashboxApi from './cashboxApi';
 
@@ -51,7 +52,7 @@ describe('CashboxSettingsView', () => {
     });
 
     test('renders tabs and lists income and expense categories', async () => {
-        render(<CashboxSettingsView />);
+        renderAsSuperuser(<CashboxSettingsView />);
 
         expect(screen.getByText(/Configuración de Caja — Formas y Categorías/i)).toBeInTheDocument();
         expect(screen.getByText('Formas de Ingreso')).toBeInTheDocument();
@@ -66,7 +67,7 @@ describe('CashboxSettingsView', () => {
     test('opens create income category modal and submits', async () => {
         cashboxApi.createCashIncomeCategory.mockResolvedValue({ id: 3, code: 'capacitacion', name: 'Capacitaciones' });
 
-        render(<CashboxSettingsView />);
+        renderAsSuperuser(<CashboxSettingsView />);
 
         await waitFor(() => {
             expect(screen.getByText('Seña / Anticipo')).toBeInTheDocument();
@@ -99,7 +100,7 @@ describe('CashboxSettingsView', () => {
     test('opens edit modal and submits updates', async () => {
         cashboxApi.updateCashIncomeCategory.mockResolvedValue({ id: 2, name: 'Extraordinario Modificado' });
 
-        render(<CashboxSettingsView />);
+        renderAsSuperuser(<CashboxSettingsView />);
 
         await waitFor(() => {
             expect(screen.getByText('Ingreso Extraordinario')).toBeInTheDocument();

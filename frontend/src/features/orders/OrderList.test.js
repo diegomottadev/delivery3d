@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { renderAsSuperuser } from '../security/permissions/permissionsTestUtils';
 import { MemoryRouter } from 'react-router-dom';
 import OrderList from './OrderList';
 import * as ordersApi from './ordersApi';
@@ -37,7 +38,7 @@ describe('OrderList', () => {
     });
 
     test('renders orders in the table', async () => {
-        render(
+        renderAsSuperuser(
             <MemoryRouter>
                 <OrderList />
             </MemoryRouter>
@@ -68,7 +69,7 @@ describe('OrderList', () => {
             },
         ];
         ordersApi.listOrders.mockResolvedValue(realOrder);
-        render(
+        renderAsSuperuser(
             <MemoryRouter>
                 <OrderList />
             </MemoryRouter>
@@ -84,7 +85,7 @@ describe('OrderList', () => {
     test('clicking delete button opens confirmation modal and confirms deletion in OrderList', async () => {
         ordersApi.deleteOrder.mockResolvedValueOnce({ message: 'Pedido 1 eliminado correctamente.' });
 
-        render(
+        renderAsSuperuser(
             <MemoryRouter>
                 <OrderList />
             </MemoryRouter>

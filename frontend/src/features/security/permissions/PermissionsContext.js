@@ -16,6 +16,25 @@ const warnUnknown = (code, origin) => {
     }
 };
 
+// can/canAny compartidos por el provider real y el estático.
+const usePermissionsValue = (state, refresh) => {
+    const can = useCallback(
+        (perm) => {
+            warnUnknown(perm, 'can()');
+            if (state.status !== 'ready') return false;
+            return state.isSuperuser || state.permissions.has(perm);
+        },
+        [state]
+    );
+
+    const canAny = useCallback((...perms) => perms.some((perm) => can(perm)), [can]);
+
+    return useMemo(
+        () => ({ status: state.status, userId: state.userId, isSuperuser: state.isSuperuser, can, canAny, refresh }),
+        [state.status, state.userId, state.isSuperuser, can, canAny, refresh]
+    );
+};
+
 /**
  * Estado global de permisos efectivos. Se carga en cada cambio de token (login, recarga, logout)
  * y vive solo en memoria (no se persiste). Falla cerrada: ante error, ningún permiso.
@@ -62,22 +81,24 @@ export const PermissionsProvider = ({ children }) => {
         return load();
     }, [token, load]);
 
-    const can = useCallback(
-        (perm) => {
-            warnUnknown(perm, 'can()');
-            if (state.status !== 'ready') return false;
-            return state.isSuperuser || state.permissions.has(perm);
-        },
-        [state]
+    const value = usePermissionsValue(state, refresh);
+
+    return <PermissionsContext.Provider value={value}>{children}</PermissionsContext.Provider>;
+};
+
+const noopRefresh = () => Promise.resolve();
+
+/**
+ * Provider con permisos fijos, sin API (tests de vistas y prototipos).
+ * NO usar en la app: los permisos reales salen de /me/permissions vía PermissionsProvider.
+ */
+export const StaticPermissionsProvider = ({ permissions = [], isSuperuser = false, userId = null, status = 'ready', children }) => {
+    const state = useMemo(
+        () => ({ status, userId, isSuperuser, permissions: new Set(permissions) }),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [status, userId, isSuperuser, permissions.join('|')]
     );
-
-    const canAny = useCallback((...perms) => perms.some((perm) => can(perm)), [can]);
-
-    const value = useMemo(
-        () => ({ status: state.status, userId: state.userId, isSuperuser: state.isSuperuser, can, canAny, refresh }),
-        [state.status, state.userId, state.isSuperuser, can, canAny, refresh]
-    );
-
+    const value = usePermissionsValue(state, noopRefresh);
     return <PermissionsContext.Provider value={value}>{children}</PermissionsContext.Provider>;
 };
 

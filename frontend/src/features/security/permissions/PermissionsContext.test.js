@@ -1,5 +1,6 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { usePermissions } from './PermissionsContext';
+import { usePermissions, StaticPermissionsProvider } from './PermissionsContext';
+import React from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import * as securityApi from '../securityApi';
 import * as authApi from '../../auth/authApi';
@@ -187,5 +188,25 @@ describe('PermissionsProvider / usePermissions', () => {
         const err = jest.spyOn(console, 'error').mockImplementation(() => {});
         expect(() => renderHook(() => usePermissions())).toThrow(/PermissionsProvider/);
         err.mockRestore();
+    });
+});
+
+describe('StaticPermissionsProvider (permisos fijos, sin API)', () => {
+    const wrap = (props) => ({ children }) => <StaticPermissionsProvider {...props}>{children}</StaticPermissionsProvider>;
+
+    test('expone can/canAny con la lista dada y status ready', () => {
+        const { result } = renderHook(() => usePermissions(), { wrapper: wrap({ permissions: [PERM.ORDERS_READ], userId: 4 }) });
+        expect(result.current.status).toBe('ready');
+        expect(result.current.userId).toBe(4);
+        expect(result.current.can(PERM.ORDERS_READ)).toBe(true);
+        expect(result.current.can(PERM.ORDERS_DELETE)).toBe(false);
+        expect(result.current.canAny(PERM.ORDERS_DELETE, PERM.ORDERS_READ)).toBe(true);
+    });
+
+    test('isSuperuser → todo true; sin permisos → todo false', () => {
+        const { result: superuser } = renderHook(() => usePermissions(), { wrapper: wrap({ isSuperuser: true }) });
+        expect(superuser.current.can(PERM.RBAC_MANAGE)).toBe(true);
+        const { result: nobody } = renderHook(() => usePermissions(), { wrapper: wrap({}) });
+        expect(nobody.current.can(PERM.ORDERS_READ)).toBe(false);
     });
 });

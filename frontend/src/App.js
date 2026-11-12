@@ -21,7 +21,7 @@ import { RequirePermission, ACCESS_DENIED_PATH } from './features/security/permi
 import { PermissionsLoadError } from './features/security/permissions/PermissionsLoadError';
 import { PERM } from './features/security/permissions/perms';
 import { MENU_CONFIG } from './navigation/menuConfig';
-import { buildMenu, buildBreadcrumb } from './navigation/buildMenu';
+import { buildMenu, buildBreadcrumb, guardFor } from './navigation/buildMenu';
 
 
 import PrimeReact from 'primereact/api';
@@ -298,11 +298,14 @@ const App = () => {
                 <div className="layout-content">
                     {permissionsStatus === 'error' && <PermissionsLoadError />}
                     <Routes>
-                        <Route path="/" element={<SplitDashboardView />} />
-                        <Route path="/orders" element={<OrderList />} />
-                        <Route path="/cashbox" element={<CashboxView />} />
-                        <Route path="/cashbox/settings" element={<CashboxSettingsView />} />
-                        <Route path="/settings" element={<WorkshopSettingsView />} />
+                        <Route path="/" element={<RequirePermission {...guardFor(MENU_CONFIG, '/')}><SplitDashboardView /></RequirePermission>} />
+                        <Route path="/orders" element={<RequirePermission {...guardFor(MENU_CONFIG, '/orders')}><OrderList /></RequirePermission>} />
+                        <Route path="/cashbox" element={<RequirePermission {...guardFor(MENU_CONFIG, '/cashbox')}><CashboxView /></RequirePermission>} />
+                        <Route
+                            path="/cashbox/settings"
+                            element={<RequirePermission {...guardFor(MENU_CONFIG, '/cashbox/settings')}><CashboxSettingsView /></RequirePermission>}
+                        />
+                        <Route path="/settings" element={<RequirePermission {...guardFor(MENU_CONFIG, '/settings')}><WorkshopSettingsView /></RequirePermission>} />
                         <Route
                             path="/seguridad/usuarios"
                             element={<RequirePermission perm={PERM.RBAC_READ}><SecurityPlaceholderView title="Usuarios" /></RequirePermission>}
@@ -320,7 +323,7 @@ const App = () => {
                             element={<RequirePermission perm={PERM.RBAC_READ}><PermissionsCatalogView /></RequirePermission>}
                         />
                         <Route path={ACCESS_DENIED_PATH} element={<AccessDeniedView />} />
-                        <Route path="*" element={<SplitDashboardView />} />
+                        <Route path="*" element={<RequirePermission {...guardFor(MENU_CONFIG, '/')}><SplitDashboardView /></RequirePermission>} />
                     </Routes>
                 </div>
 

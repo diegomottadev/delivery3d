@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { renderAsSuperuser } from '../security/permissions/permissionsTestUtils';
 import QuoteModal from './QuoteModal';
 import * as ordersApi from './ordersApi';
 
@@ -21,7 +22,7 @@ describe('QuoteModal', () => {
     });
 
     test('renders quote parameters inputs', () => {
-        render(<QuoteModal visible={true} order={mockOrder} onHide={() => {}} onQuoteConfirmed={() => {}} />);
+        renderAsSuperuser(<QuoteModal visible={true} order={mockOrder} onHide={() => {}} onQuoteConfirmed={() => {}} />);
 
         expect(screen.getByText(/Cotizar Pedido #10/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/Merma \/ Purga/i)).toBeInTheDocument();
@@ -56,7 +57,7 @@ describe('QuoteModal', () => {
             pricing: { informed_price: '9700.00' },
         });
 
-        render(<QuoteModal visible={true} order={mockOrder} onHide={() => {}} onQuoteConfirmed={onQuoteConfirmed} />);
+        renderAsSuperuser(<QuoteModal visible={true} order={mockOrder} onHide={() => {}} onQuoteConfirmed={onQuoteConfirmed} />);
 
         // Click calculate button
         const calcBtn = screen.getByRole('button', { name: /Calcular Costos/i });
@@ -92,7 +93,7 @@ describe('QuoteModal', () => {
             },
         });
 
-        render(<QuoteModal visible={true} order={mockOrder} onHide={() => {}} onQuoteConfirmed={() => {}} />);
+        renderAsSuperuser(<QuoteModal visible={true} order={mockOrder} onHide={() => {}} onQuoteConfirmed={() => {}} />);
 
         // Click x3 multiplier option
         const x3Btn = screen.getByText('x3');
@@ -124,7 +125,7 @@ describe('QuoteModal', () => {
             },
         });
 
-        render(<QuoteModal visible={true} order={mockOrder} onHide={() => {}} onQuoteConfirmed={() => {}} />);
+        renderAsSuperuser(<QuoteModal visible={true} order={mockOrder} onHide={() => {}} onQuoteConfirmed={() => {}} />);
 
         // Verify labor labels and preview
         expect(screen.getByText(/Tarifa Mano de Obra/i)).toBeInTheDocument();

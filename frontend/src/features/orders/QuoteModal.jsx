@@ -7,6 +7,8 @@ import { SelectButton } from 'primereact/selectbutton';
 import { Divider } from 'primereact/divider';
 import { Message } from 'primereact/message';
 import { calculateQuote, confirmQuote, listPrinters, getSettings } from './ordersApi';
+import { usePermissions } from '../security/permissions/PermissionsContext';
+import { PERM } from '../security/permissions/perms';
 
 const MULTIPLIER_OPTIONS = [
     { label: 'x2', value: 2 },
@@ -37,6 +39,10 @@ const formatPrintTime = (minutes) => {
 };
 
 const QuoteModal = ({ visible, order, onHide, onQuoteConfirmed }) => {
+    // Opción B (E3-6): sin settings:update, costos y margen salen de la configuración del taller
+    // (el backend ignora los enviados). Impresora, tiempo de mano de obra y precio informado siguen editables.
+    const { can } = usePermissions();
+    const canEditCosts = can(PERM.SETTINGS_UPDATE);
     const [quoteVars, setQuoteVars] = useState({ ...DEFAULT_QUOTE_VARS });
     const [calculatedPricing, setCalculatedPricing] = useState(null);
     const [informedPrice, setInformedPrice] = useState(null);
@@ -68,7 +74,7 @@ const QuoteModal = ({ visible, order, onHide, onQuoteConfirmed }) => {
                 if (!isMounted) return;
 
                 let initialMultiplier = 2;
-                if (order.quote) {
+                if (order.quote && canEditCosts) {
                     if (order.quote.profit_multiplier) {
                         initialMultiplier = Math.round(parseFloat(order.quote.profit_multiplier));
                     } else if (order.quote.profit_margin_pct) {
@@ -100,13 +106,20 @@ const QuoteModal = ({ visible, order, onHide, onQuoteConfirmed }) => {
                         profit_multiplier: [2, 3, 4, 5].includes(initialMultiplier) ? initialMultiplier : 2,
                     });
                 } else {
-                    const defPrinterId = currentSettings?.default_printer_id || (printersList[0]?.id || null);
+                    // Valores del taller. Si el pedido ya tenía cotización (y no se pueden editar costos),
+                    // se conservan su impresora y su tiempo de mano de obra, que siguen siendo editables.
+                    const quotedPrinterId = order.quote?.printer_id || null;
+                    const defPrinterId = quotedPrinterId || currentSettings?.default_printer_id || (printersList[0]?.id || null);
                     const defPrinter = printersList.find((p) => p.id === defPrinterId) || printersList[0] || null;
                     setSelectedPrinter(defPrinter);
 
                     const mult = currentSettings?.profit_multiplier ? Math.round(parseFloat(currentSettings.profit_multiplier)) : 2;
                     const initialRate = parseFloat(currentSettings?.labor_cost_per_hour ?? DEFAULT_QUOTE_VARS.labor_cost_per_hour);
-                    const defMins = parseInt(currentSettings?.default_labor_time_minutes ?? 15, 10);
+                    const quotedMins = order.quote?.labor_time_minutes;
+                    const defMins = parseInt(
+                        quotedMins !== undefined && quotedMins !== null ? quotedMins : currentSettings?.default_labor_time_minutes ?? 15,
+                        10
+                    );
 
                     setQuoteVars({
                         printer_id: defPrinter?.id || null,
@@ -133,7 +146,7 @@ const QuoteModal = ({ visible, order, onHide, onQuoteConfirmed }) => {
         return () => {
             isMounted = false;
         };
-    }, [visible, order]);
+    }, [visible, order, canEditCosts]);
 
     const handlePrinterSelect = (printerId) => {
         const found = printers.find((p) => p.id === printerId);
@@ -305,6 +318,15 @@ const QuoteModal = ({ visible, order, onHide, onQuoteConfirmed }) => {
                 </div>
 
                 <h5>Variables del Taller {selectedPrinter ? `(${selectedPrinter.name})` : ''}</h5>
+                {!canEditCosts && (
+                    <div className="mb-3" data-testid="quote-costs-readonly">
+                        <Message
+                            severity="info"
+                            className="w-full justify-content-start"
+                            text="Los costos y el margen se toman de la configuración del taller: cambiarlos requiere permiso para editar la configuración. Podés elegir la impresora, el tiempo de mano de obra y el precio final."
+                        />
+                    </div>
+                )}
                 <div className="grid">
                     <div className="col-12 md:col-6 field mb-2">
                         <label htmlFor="printer_select" className="font-semibold">Impresora</label>
@@ -318,6 +340,7 @@ const QuoteModal = ({ visible, order, onHide, onQuoteConfirmed }) => {
                             onChange={(e) => handlePrinterSelect(e.value)}
                             placeholder="Seleccione Impresora"
                             className="w-full"
+                            data-testid="quote-printer-select"
                         />
                     </div>
                     <div className="col-12 md:col-3 field mb-2">
@@ -327,6 +350,7 @@ const QuoteModal = ({ visible, order, onHide, onQuoteConfirmed }) => {
                             inputId="waste_purge"
                             value={quoteVars.waste_purge_pct}
                             onValueChange={(e) => handleVarChange('waste_purge_pct', e.value)}
+                            disabled={!canEditCosts}
                             suffix="%"
                             min={0}
                             max={100}
@@ -339,6 +363,7 @@ const QuoteModal = ({ visible, order, onHide, onQuoteConfirmed }) => {
                             inputId="machine_power"
                             value={quoteVars.machine_power_watts}
                             onValueChange={(e) => handleVarChange('machine_power_watts', e.value)}
+                            disabled={!canEditCosts}
                             suffix=" W"
                             min={1}
                         />
@@ -353,6 +378,7 @@ const QuoteModal = ({ visible, order, onHide, onQuoteConfirmed }) => {
                             inputId="kwh_cost"
                             value={quoteVars.kwh_cost}
                             onValueChange={(e) => handleVarChange('kwh_cost', e.value)}
+                            disabled={!canEditCosts}
                             mode="currency"
                             currency="ARS"
                             locale="es-AR"
@@ -365,6 +391,7 @@ const QuoteModal = ({ visible, order, onHide, onQuoteConfirmed }) => {
                             inputId="machine_cost"
                             value={quoteVars.machine_cost_per_hour}
                             onValueChange={(e) => handleVarChange('machine_cost_per_hour', e.value)}
+                            disabled={!canEditCosts}
                             mode="currency"
                             currency="ARS"
                             locale="es-AR"
@@ -377,6 +404,7 @@ const QuoteModal = ({ visible, order, onHide, onQuoteConfirmed }) => {
                             inputId="labor_cost_per_hour"
                             value={quoteVars.labor_cost_per_hour}
                             onValueChange={(e) => handleVarChange('labor_cost_per_hour', e.value)}
+                            disabled={!canEditCosts}
                             mode="currency"
                             currency="ARS"
                             locale="es-AR"
@@ -441,6 +469,7 @@ const QuoteModal = ({ visible, order, onHide, onQuoteConfirmed }) => {
                                 if (e.value) handleVarChange('profit_multiplier', e.value);
                             }}
                             className="w-full flex"
+                            disabled={!canEditCosts}
                         />
                     </div>
                 </div>

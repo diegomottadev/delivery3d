@@ -1,5 +1,6 @@
 import React, { createRef } from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { renderAsSuperuser } from '../security/permissions/permissionsTestUtils';
 import { BrowserRouter } from 'react-router-dom';
 import CashboxCompactWidget from './CashboxCompactWidget';
 import * as cashboxApi from './cashboxApi';
@@ -58,7 +59,7 @@ describe('CashboxCompactWidget', () => {
     });
 
     test('renders balance and compact movements list', async () => {
-        render(
+        renderAsSuperuser(
             <BrowserRouter>
                 <CashboxCompactWidget />
             </BrowserRouter>
@@ -77,7 +78,7 @@ describe('CashboxCompactWidget', () => {
     test('opens quick egreso dialog and registers movement', async () => {
         cashboxApi.createCashMovement.mockResolvedValue({ id: 3 });
 
-        render(
+        renderAsSuperuser(
             <BrowserRouter>
                 <CashboxCompactWidget />
             </BrowserRouter>
@@ -109,7 +110,7 @@ describe('CashboxCompactWidget', () => {
 
     test('exposes refresh method via ref', async () => {
         const ref = createRef();
-        render(
+        renderAsSuperuser(
             <BrowserRouter>
                 <CashboxCompactWidget ref={ref} />
             </BrowserRouter>

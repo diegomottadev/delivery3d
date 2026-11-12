@@ -3,6 +3,8 @@ import { SelectButton } from 'primereact/selectbutton';
 import { Toast } from 'primereact/toast';
 import OrderBoard from '../orders/OrderBoard';
 import CashboxCompactWidget from '../cashbox/CashboxCompactWidget';
+import { usePermissions } from '../security/permissions/PermissionsContext';
+import { PERM } from '../security/permissions/perms';
 
 const VIEW_OPTIONS = [
     { label: 'Dividida', value: 'split', icon: 'pi pi-pause' },
@@ -13,6 +15,11 @@ const SplitDashboardView = () => {
     const [viewMode, setViewMode] = useState('split');
     const cashboxRef = useRef(null);
     const toast = useRef(null);
+    // Cada panel solo se monta (y pide datos) si el usuario puede leerlo.
+    const { can } = usePermissions();
+    const canSeeOrders = can(PERM.ORDERS_READ);
+    const canSeeCashbox = can(PERM.CASH_MOVEMENTS_READ);
+    const showCashbox = canSeeCashbox && (viewMode === 'split' || !canSeeOrders);
 
     const handleOrderStateChanged = (action) => {
         // Automatically refresh cashbox metrics when order balance changes
@@ -48,18 +55,20 @@ const SplitDashboardView = () => {
             {/* Disposición Split-Screen Responsive con toolbar unificado en la misma fila */}
             <div className="grid">
                 {/* Panel Izquierdo: Tablero Kanban de Pedidos */}
-                <div className={viewMode === 'split' ? 'col-12 xl:col-8' : 'col-12'}>
-                    <OrderBoard
-                        onOrderStateChanged={handleOrderStateChanged}
-                        isSplitView={viewMode === 'split'}
-                        showHeader={true}
-                        extraActions={viewModeSwitcher}
-                    />
-                </div>
+                {canSeeOrders && (
+                    <div className={showCashbox ? 'col-12 xl:col-8' : 'col-12'}>
+                        <OrderBoard
+                            onOrderStateChanged={handleOrderStateChanged}
+                            isSplitView={showCashbox}
+                            showHeader={true}
+                            extraActions={canSeeCashbox ? viewModeSwitcher : null}
+                        />
+                    </div>
+                )}
 
                 {/* Panel Derecho: Módulo Financiero de Caja */}
-                {viewMode === 'split' && (
-                    <div className="col-12 xl:col-4">
+                {showCashbox && (
+                    <div className={canSeeOrders ? 'col-12 xl:col-4' : 'col-12'}>
                         <CashboxCompactWidget
                             ref={cashboxRef}
                             onMovementCreated={() => {

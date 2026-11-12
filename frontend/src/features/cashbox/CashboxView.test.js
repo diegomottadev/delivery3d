@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { renderAsSuperuser } from '../security/permissions/permissionsTestUtils';
 import { BrowserRouter } from 'react-router-dom';
 import CashboxView from './CashboxView';
 import * as cashboxApi from './cashboxApi';
@@ -60,7 +61,7 @@ describe('CashboxView', () => {
     });
 
     test('renders financial metrics summary cards and table', async () => {
-        render(
+        renderAsSuperuser(
             <BrowserRouter>
                 <CashboxView />
             </BrowserRouter>
@@ -80,7 +81,7 @@ describe('CashboxView', () => {
     test('opens movement registration dialog and creates movement', async () => {
         cashboxApi.createCashMovement.mockResolvedValue({ id: 3 });
 
-        render(
+        renderAsSuperuser(
             <BrowserRouter>
                 <CashboxView />
             </BrowserRouter>

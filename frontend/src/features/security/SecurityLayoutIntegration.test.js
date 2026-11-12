@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import AppWrapper from '../../AppWrapper';
 import { PERM } from './permissions/perms';
-import { startSession, mockMyPermissions } from './permissions/permissionsTestUtils';
+import { startSession, mockMyPermissions, OPERATOR_PERMISSIONS } from './permissions/permissionsTestUtils';
 
 jest.mock('./securityApi');
 jest.mock('../auth/authApi');
@@ -44,6 +44,23 @@ describe('Integración: menú de Seguridad y guard dentro del layout', () => {
         renderAppAt('/seguridad/usuarios');
         expect(await screen.findByRole('heading', { name: /Acceso denegado/i })).toBeInTheDocument();
         expect(menuHas('Listado de Pedidos')).toBe(true);
+        expect(menuHas('Seguridad')).toBe(false);
+    });
+
+    test('sin permisos: las rutas del taller van a /acceso-denegado y el menú queda vacío', async () => {
+        mockMyPermissions({ permissions: [] });
+        renderAppAt('/orders');
+        expect(await screen.findByRole('heading', { name: /Acceso denegado/i })).toBeInTheDocument();
+        ['Tablero', 'Listado de Pedidos', 'Caja Diaria y Finanzas', 'Configuración de Caja', 'Configuración del Taller', 'Seguridad'].forEach((label) =>
+            expect(menuHas(label)).toBe(false)
+        );
+    });
+
+    test('rol Operador: ve el menú del taller pero Seguridad le da acceso denegado', async () => {
+        mockMyPermissions({ permissions: [...OPERATOR_PERMISSIONS] });
+        renderAppAt('/seguridad/usuarios');
+        expect(await screen.findByRole('heading', { name: /Acceso denegado/i })).toBeInTheDocument();
+        ['Listado de Pedidos', 'Caja Diaria y Finanzas', 'Configuración del Taller'].forEach((label) => expect(menuHas(label)).toBe(true));
         expect(menuHas('Seguridad')).toBe(false);
     });
 });
