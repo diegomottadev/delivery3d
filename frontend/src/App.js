@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { classNames } from 'primereact/utils';
 import { Route, Routes, useNavigate, useLocation } from 'react-router-dom';
 
@@ -13,6 +13,14 @@ import WorkshopSettingsView from './features/settings/WorkshopSettingsView';
 import CashboxView from './features/cashbox/CashboxView';
 import CashboxSettingsView from './features/cashbox/CashboxSettingsView';
 import SplitDashboardView from './features/dashboard/SplitDashboardView';
+import AccessDeniedView from './features/security/AccessDeniedView';
+import SecurityPlaceholderView from './features/security/SecurityPlaceholderView';
+import { usePermissions } from './features/security/permissions/PermissionsContext';
+import { RequirePermission, ACCESS_DENIED_PATH } from './features/security/permissions/RequirePermission';
+import { PermissionsLoadError } from './features/security/permissions/PermissionsLoadError';
+import { PERM } from './features/security/permissions/perms';
+import { MENU_CONFIG } from './navigation/menuConfig';
+import { buildMenu, buildBreadcrumb } from './navigation/buildMenu';
 
 
 import PrimeReact from 'primereact/api';
@@ -47,27 +55,15 @@ const App = () => {
     let topbarItemClick = false;
     let inlineMenuClick = false;
 
-    const breadcrumb = [
-        { path: '/', parent: 'Delivery3D', label: 'Tablero Operativo y Finanzas' },
-        { path: '/orders', parent: 'Delivery3D', label: 'Listado de Pedidos' },
-        { path: '/cashbox', parent: 'Delivery3D', label: 'Caja Diaria y Finanzas' },
-        { path: '/cashbox/settings', parent: 'Delivery3D', label: 'Configuración de Caja' },
-        { path: '/settings', parent: 'Delivery3D', label: 'Configuración del Taller' }
-    ];
+    const { can, status: permissionsStatus } = usePermissions();
 
-    const menu = [
-        {
-            label: 'Delivery3D - Taller',
-            icon: 'pi pi-fw pi-box',
-            items: [
-                { label: 'Tablero y Finanzas (Split)', icon: 'pi pi-fw pi-th-large', to: '/' },
-                { label: 'Listado de Pedidos', icon: 'pi pi-fw pi-list', to: '/orders' },
-                { label: 'Caja Diaria y Finanzas', icon: 'pi pi-fw pi-wallet', to: '/cashbox' },
-                { label: 'Configuración de Caja', icon: 'pi pi-fw pi-sliders-h', to: '/cashbox/settings' },
-                { label: 'Configuración del Taller', icon: 'pi pi-fw pi-cog', to: '/settings' }
-            ]
-        }
-    ];
+    const breadcrumb = useMemo(
+        () => [...buildBreadcrumb(MENU_CONFIG), { path: ACCESS_DENIED_PATH, parent: 'Delivery3D', label: 'Acceso denegado' }],
+        []
+    );
+
+    // El menú sale de MENU_CONFIG filtrado por permisos (sin ifs en el JSX).
+    const menu = useMemo(() => buildMenu(MENU_CONFIG, can), [can]);
 
     useEffect(() => {
         copyTooltipRef && copyTooltipRef.current && copyTooltipRef.current.updateTargetEvents();
@@ -299,12 +295,30 @@ const App = () => {
                 <AppBreadcrumb meta={meta} />
 
                 <div className="layout-content">
+                    {permissionsStatus === 'error' && <PermissionsLoadError />}
                     <Routes>
                         <Route path="/" element={<SplitDashboardView />} />
                         <Route path="/orders" element={<OrderList />} />
                         <Route path="/cashbox" element={<CashboxView />} />
                         <Route path="/cashbox/settings" element={<CashboxSettingsView />} />
                         <Route path="/settings" element={<WorkshopSettingsView />} />
+                        <Route
+                            path="/seguridad/usuarios"
+                            element={<RequirePermission perm={PERM.RBAC_READ}><SecurityPlaceholderView title="Usuarios" /></RequirePermission>}
+                        />
+                        <Route
+                            path="/seguridad/grupos"
+                            element={<RequirePermission perm={PERM.RBAC_READ}><SecurityPlaceholderView title="Grupos" /></RequirePermission>}
+                        />
+                        <Route
+                            path="/seguridad/roles"
+                            element={<RequirePermission perm={PERM.RBAC_READ}><SecurityPlaceholderView title="Roles" /></RequirePermission>}
+                        />
+                        <Route
+                            path="/seguridad/permisos"
+                            element={<RequirePermission perm={PERM.RBAC_READ}><SecurityPlaceholderView title="Permisos" /></RequirePermission>}
+                        />
+                        <Route path={ACCESS_DENIED_PATH} element={<AccessDeniedView />} />
                         <Route path="*" element={<SplitDashboardView />} />
                     </Routes>
                 </div>
