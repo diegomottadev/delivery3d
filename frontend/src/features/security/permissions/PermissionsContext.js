@@ -7,7 +7,7 @@ const PermissionsContext = createContext(null);
 
 const IS_DEV = process.env.NODE_ENV !== 'production';
 
-const EMPTY = { status: 'idle', isSuperuser: false, permissions: new Set() };
+const EMPTY = { status: 'idle', userId: null, isSuperuser: false, permissions: new Set() };
 
 const warnUnknown = (code, origin) => {
     if (IS_DEV && !isKnownPerm(code)) {
@@ -33,7 +33,12 @@ export const PermissionsProvider = ({ children }) => {
             if (id !== requestId.current) return;
             const permissions = new Set(Array.isArray(data?.permissions) ? data.permissions : []);
             permissions.forEach((code) => warnUnknown(code, 'respuesta de /me/permissions'));
-            setState({ status: 'ready', isSuperuser: data?.is_superuser === true, permissions });
+            setState({
+                status: 'ready',
+                userId: Number.isInteger(data?.user_id) ? data.user_id : null,
+                isSuperuser: data?.is_superuser === true,
+                permissions,
+            });
         } catch {
             if (id !== requestId.current) return;
             setState({ ...EMPTY, status: 'error' });
@@ -69,8 +74,8 @@ export const PermissionsProvider = ({ children }) => {
     const canAny = useCallback((...perms) => perms.some((perm) => can(perm)), [can]);
 
     const value = useMemo(
-        () => ({ status: state.status, isSuperuser: state.isSuperuser, can, canAny, refresh }),
-        [state.status, state.isSuperuser, can, canAny, refresh]
+        () => ({ status: state.status, userId: state.userId, isSuperuser: state.isSuperuser, can, canAny, refresh }),
+        [state.status, state.userId, state.isSuperuser, can, canAny, refresh]
     );
 
     return <PermissionsContext.Provider value={value}>{children}</PermissionsContext.Provider>;

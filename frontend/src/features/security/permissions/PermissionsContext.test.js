@@ -44,6 +44,18 @@ describe('PermissionsProvider / usePermissions', () => {
         expect(result.current.perms.isSuperuser).toBe(false);
     });
 
+    test('expone el userId de /me/permissions (para detectar acciones sobre uno mismo) y lo limpia al salir', async () => {
+        startSession();
+        mockMyPermissions({ permissions: [PERM.RBAC_READ] });
+        const { result } = renderPerms();
+        expect(result.current.perms.userId).toBeNull();
+        await waitFor(() => expect(result.current.perms.userId).toBe(1));
+        act(() => {
+            result.current.auth.logout();
+        });
+        expect(result.current.perms.userId).toBeNull();
+    });
+
     test('canAny es true si tiene al menos uno, false si ninguno o sin argumentos', async () => {
         startSession();
         mockMyPermissions({ permissions: [PERM.RBAC_READ] });

@@ -15,6 +15,7 @@ import CashboxSettingsView from './features/cashbox/CashboxSettingsView';
 import SplitDashboardView from './features/dashboard/SplitDashboardView';
 import AccessDeniedView from './features/security/AccessDeniedView';
 import SecurityPlaceholderView from './features/security/SecurityPlaceholderView';
+import PermissionsCatalogView from './features/security/permissions-catalog/PermissionsCatalogView';
 import { usePermissions } from './features/security/permissions/PermissionsContext';
 import { RequirePermission, ACCESS_DENIED_PATH } from './features/security/permissions/RequirePermission';
 import { PermissionsLoadError } from './features/security/permissions/PermissionsLoadError';
@@ -316,7 +317,7 @@ const App = () => {
                         />
                         <Route
                             path="/seguridad/permisos"
-                            element={<RequirePermission perm={PERM.RBAC_READ}><SecurityPlaceholderView title="Permisos" /></RequirePermission>}
+                            element={<RequirePermission perm={PERM.RBAC_READ}><PermissionsCatalogView /></RequirePermission>}
                         />
                         <Route path={ACCESS_DENIED_PATH} element={<AccessDeniedView />} />
                         <Route path="*" element={<SplitDashboardView />} />
