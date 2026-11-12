@@ -19,3 +19,9 @@ __pycache__/
 .vscode/
 .idea/
 .DS_Store
+
+# Worktrees de agentes (ramas de trabajo aisladas)
+.worktrees/
+
+# symlink de la venv en worktrees
+backend/.venv
