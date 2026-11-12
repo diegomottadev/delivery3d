@@ -3,6 +3,7 @@ import { SelectButton } from 'primereact/selectbutton';
 import { Toast } from 'primereact/toast';
 import OrderBoard from '../orders/OrderBoard';
 import CashboxCompactWidget from '../cashbox/CashboxCompactWidget';
+import NoPrintersWarning from './NoPrintersWarning';
 import { usePermissions } from '../security/permissions/PermissionsContext';
 import { PERM } from '../security/permissions/perms';
 
@@ -51,6 +52,8 @@ const SplitDashboardView = () => {
     return (
         <div>
             <Toast ref={toast} />
+
+            <NoPrintersWarning />
 
             {/* Disposición Split-Screen Responsive con toolbar unificado en la misma fila */}
             <div className="grid">

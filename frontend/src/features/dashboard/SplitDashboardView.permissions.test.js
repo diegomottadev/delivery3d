@@ -49,4 +49,13 @@ describe('SplitDashboardView: paneles según permisos', () => {
         expect(screen.queryByText('Dividida')).not.toBeInTheDocument();
         expect(cashboxApi.getCashSummary).not.toHaveBeenCalled();
     });
+
+    test('sin impresoras activas el aviso aparece arriba de pedidos y caja', async () => {
+        ordersApi.listPrinters.mockResolvedValue([]);
+        await renderDashboard(OPERATOR_PERMISSIONS);
+        const warning = screen.getByTestId('no-printers-warning');
+        const board = screen.getByText(/Tablero de Pedidos/i);
+        // eslint-disable-next-line no-bitwise
+        expect(warning.compareDocumentPosition(board) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
 });

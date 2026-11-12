@@ -92,3 +92,42 @@ describe('QuoteModal: opción B (sin settings:update no se tocan costos ni marge
         expect(screen.getByRole('button', { name: 'x4' })).toHaveAttribute('aria-pressed', 'true');
     });
 });
+
+describe('QuoteModal: error de impresora del backend (422 errors.printer_id)', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+        ordersApi.getSettings.mockResolvedValue(SETTINGS);
+        ordersApi.listPrinters.mockResolvedValue([]);
+    });
+
+    const NEW_ORDER = { ...ORDER, status: 'nuevo', quote: null, pricing: null };
+    const PRINTER_ERROR = 'No hay impresora elegida ni impresora por defecto en el taller.';
+
+    test('muestra el error junto al selector de impresora', async () => {
+        ordersApi.calculateQuote.mockRejectedValue(
+            Object.assign(new Error('422'), {
+                response: { status: 422, data: { error: 'Datos inválidos', code: 'VALIDATION_ERROR', errors: { printer_id: PRINTER_ERROR } } },
+            })
+        );
+        renderWithPermissions(<QuoteModal visible order={NEW_ORDER} onHide={() => {}} onQuoteConfirmed={() => {}} />, {
+            permissions: OPERATOR_PERMISSIONS,
+        });
+        await waitFor(() => expect(ordersApi.getSettings).toHaveBeenCalled());
+        fireEvent.click(screen.getByRole('button', { name: /Calcular Costos/i }));
+        expect(await screen.findByTestId('quote-printer-error')).toHaveTextContent(PRINTER_ERROR);
+        expect(screen.getByTestId('quote-printer-select')).toHaveClass('p-invalid');
+    });
+
+    test('un error sin errors.printer_id no marca el selector', async () => {
+        ordersApi.calculateQuote.mockRejectedValue(
+            Object.assign(new Error('409'), { response: { status: 409, data: { error: 'Conflicto', code: 'X' } } })
+        );
+        renderWithPermissions(<QuoteModal visible order={NEW_ORDER} onHide={() => {}} onQuoteConfirmed={() => {}} />, {
+            permissions: OPERATOR_PERMISSIONS,
+        });
+        await waitFor(() => expect(ordersApi.getSettings).toHaveBeenCalled());
+        fireEvent.click(screen.getByRole('button', { name: /Calcular Costos/i }));
+        expect(await screen.findByText(/Conflicto/)).toBeInTheDocument();
+        expect(screen.queryByTestId('quote-printer-error')).not.toBeInTheDocument();
+    });
+});

@@ -9,6 +9,7 @@ import { Message } from 'primereact/message';
 import { calculateQuote, confirmQuote, listPrinters, getSettings } from './ordersApi';
 import { usePermissions } from '../security/permissions/PermissionsContext';
 import { PERM } from '../security/permissions/perms';
+import { getApiError } from '../security/apiError';
 
 const MULTIPLIER_OPTIONS = [
     { label: 'x2', value: 2 },
@@ -51,11 +52,14 @@ const QuoteModal = ({ visible, order, onHide, onQuoteConfirmed }) => {
     const [errorMessage, setErrorMessage] = useState('');
     const [printers, setPrinters] = useState([]);
     const [selectedPrinter, setSelectedPrinter] = useState(null);
+    // Error de validación del backend sobre la impresora (422 errors.printer_id).
+    const [printerError, setPrinterError] = useState('');
 
     useEffect(() => {
         let isMounted = true;
         if (visible && order) {
             setErrorMessage('');
+            setPrinterError('');
             const fetchInit = async () => {
                 let printersList = [];
                 let currentSettings = null;
@@ -148,7 +152,14 @@ const QuoteModal = ({ visible, order, onHide, onQuoteConfirmed }) => {
         };
     }, [visible, order, canEditCosts]);
 
+    const showApiError = (prefix, err) => {
+        const apiError = getApiError(err);
+        setPrinterError(apiError.fieldErrors.printer_id || '');
+        setErrorMessage(`${prefix}: ${apiError.message}`);
+    };
+
     const handlePrinterSelect = (printerId) => {
+        setPrinterError('');
         const found = printers.find((p) => p.id === printerId);
         setSelectedPrinter(found || null);
         if (found) {
@@ -183,6 +194,7 @@ const QuoteModal = ({ visible, order, onHide, onQuoteConfirmed }) => {
     const handleCalculate = async () => {
         if (!order) return;
         setErrorMessage('');
+        setPrinterError('');
         setLoadingCalc(true);
         const mult = parseFloat(quoteVars.profit_multiplier || 2);
         const totalMinutes = (parseInt(quoteVars.labor_time_hours || 0, 10) * 60) + parseInt(quoteVars.labor_time_minutes || 0, 10);
@@ -208,8 +220,7 @@ const QuoteModal = ({ visible, order, onHide, onQuoteConfirmed }) => {
                 setInformedPrice(parseFloat(pricing.suggested_sale_price));
             }
         } catch (err) {
-            const errDetail = err.response?.data?.error || err.message;
-            setErrorMessage(`Error al calcular: ${errDetail}`);
+            showApiError('Error al calcular', err);
         } finally {
             setLoadingCalc(false);
         }
@@ -242,8 +253,7 @@ const QuoteModal = ({ visible, order, onHide, onQuoteConfirmed }) => {
             }
             onHide();
         } catch (err) {
-            const errDetail = err.response?.data?.error || err.message;
-            setErrorMessage(`Error al confirmar: ${errDetail}`);
+            showApiError('Error al confirmar', err);
         } finally {
             setLoadingConfirm(false);
         }
@@ -339,9 +349,15 @@ const QuoteModal = ({ visible, order, onHide, onQuoteConfirmed }) => {
                             }))}
                             onChange={(e) => handlePrinterSelect(e.value)}
                             placeholder="Seleccione Impresora"
-                            className="w-full"
+                            className={`w-full${printerError ? ' p-invalid' : ''}`}
                             data-testid="quote-printer-select"
+                            aria-describedby={printerError ? 'quote-printer-error' : undefined}
                         />
+                        {printerError && (
+                            <small id="quote-printer-error" className="p-error block mt-1" data-testid="quote-printer-error">
+                                {printerError}
+                            </small>
+                        )}
                     </div>
                     <div className="col-12 md:col-3 field mb-2">
                         <label htmlFor="waste_purge">Merma / Purga (%)</label>
