@@ -22,8 +22,6 @@ def generate_jwt_token(user: User, expires_in_hours: int = TOKEN_EXPIRATION_HOUR
     exp = now + timedelta(hours=expires_in_hours)
     payload = {
         "sub": str(user.id),
-        "username": user.username,
-        "role": user.role,
         "iss": ISSUER,
         "iat": now,
         "exp": exp,
@@ -77,7 +75,11 @@ def login_required(view):
 
 
 def roles_required(*allowed_roles: str):
-    """Enforces Role-Based Access Control (RBAC)."""
+    """DEPRECADO (rbac-access-control): usar `app.rbac.security.permission_required(Perm.X)`.
+
+    Autorizaba por la columna deprecada `users.role`. No tiene usos; se conserva hasta que
+    se elimine `users.role` en un cambio posterior.
+    """
 
     def decorator(view):
         @wraps(view)

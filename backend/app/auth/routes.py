@@ -3,6 +3,7 @@ from flask import Blueprint, current_app, g, jsonify, request
 from app.auth.security import TOKEN_EXPIRATION_HOURS, login_required
 from app.auth.services import AuthError, authenticate_user
 from app.http import json_body
+from app.rbac.security import get_user_permissions
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
@@ -49,3 +50,23 @@ def login_route():
 def me_route():
     """Returns safe profile of the currently authenticated operator (Mitigates BOLA)."""
     return jsonify(g.current_user.to_dict()), 200
+
+
+@auth_bp.get("/me/permissions")
+@login_required
+def my_permissions_route():
+    """Permisos efectivos del usuario actual (contrato fijo, api-contract.md §1).
+
+    Solo requiere sesión. Lista ordenada y sin duplicados; superusuario -> catálogo completo.
+    """
+    user = g.current_user
+    return (
+        jsonify(
+            {
+                "user_id": user.id,
+                "is_superuser": bool(user.is_superuser),
+                "permissions": sorted(get_user_permissions()),
+            }
+        ),
+        200,
+    )

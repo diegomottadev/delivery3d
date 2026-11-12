@@ -1,5 +1,6 @@
 """Servicios RBAC (rbac-access-control).
 
+Etapa 5: `get_effective_permissions` (resolución por roles, una consulta UNION).
 Etapa 3: sincronización del catálogo `Perm` -> tabla `permissions` y bootstrap del grupo
 "Operadores" / rol "Operador". Todo en una sola transacción (`seed_rbac`), con dry-run.
 """
@@ -17,9 +18,32 @@ from app.rbac.constants import (
     PERM_DESCRIPTIONS,
     Perm,
 )
-from app.rbac.models import Group, GroupRole, Permission, Role, RolePermission, UserGroup
+from app.rbac.models import Group, GroupRole, Permission, Role, RolePermission, UserGroup, UserRole
 
 LEGACY_OPERATOR_ROLE = "operator"  # users.role (deprecada): solo para la membresía inicial
+
+
+def get_effective_permissions(user_id: int) -> frozenset[str]:
+    """Unión de los permisos de los roles del usuario por grupo y por asignación directa.
+
+    Solo mira roles: NO aplica el bypass de superusuario (eso lo hace
+    `app.rbac.security.get_user_permissions`). Una sola consulta (UNION); cada join usa el
+    prefijo izquierdo de un UNIQUE de las tablas puente.
+    """
+    via_groups = (
+        db.session.query(Permission.code)
+        .join(RolePermission, RolePermission.permission_id == Permission.id)
+        .join(GroupRole, GroupRole.role_id == RolePermission.role_id)
+        .join(UserGroup, UserGroup.group_id == GroupRole.group_id)
+        .filter(UserGroup.user_id == user_id)
+    )
+    direct = (
+        db.session.query(Permission.code)
+        .join(RolePermission, RolePermission.permission_id == Permission.id)
+        .join(UserRole, UserRole.role_id == RolePermission.role_id)
+        .filter(UserRole.user_id == user_id)
+    )
+    return frozenset(code for (code,) in via_groups.union(direct).all())
 
 
 @dataclass(frozen=True)

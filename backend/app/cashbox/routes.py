@@ -1,7 +1,8 @@
 from flask import Blueprint, g, jsonify, request
 
 from app.http import json_body
-from app.auth.security import login_required
+from app.rbac.constants import Perm
+from app.rbac.security import permission_required
 from app.cashbox.services import (
     CashboxValidationError,
     OrderBalanceError,
@@ -27,7 +28,7 @@ cashbox_bp = Blueprint("cashbox", __name__, url_prefix="/api/cashbox")
 
 
 @cashbox_bp.get("/categories/income")
-@login_required
+@permission_required(Perm.CASH_CATEGORIES_READ)
 def get_income_categories_route():
     all_flag = request.args.get("all", "false").lower() in ("true", "1")
     categories = list_income_categories(active_only=not all_flag)
@@ -35,7 +36,7 @@ def get_income_categories_route():
 
 
 @cashbox_bp.post("/categories/income")
-@login_required
+@permission_required(Perm.CASH_CATEGORIES_CREATE)
 def create_income_category_route():
     data = json_body()
     code = data.get("code")
@@ -52,7 +53,7 @@ def create_income_category_route():
 
 
 @cashbox_bp.put("/categories/income/<int:cat_id>")
-@login_required
+@permission_required(Perm.CASH_CATEGORIES_UPDATE)
 def update_income_category_route(cat_id: int):
     data = json_body()
     name = data.get("name")
@@ -74,7 +75,7 @@ def update_income_category_route(cat_id: int):
 
 
 @cashbox_bp.get("/categories/expense")
-@login_required
+@permission_required(Perm.CASH_CATEGORIES_READ)
 def get_expense_categories_route():
     all_flag = request.args.get("all", "false").lower() in ("true", "1")
     categories = list_expense_categories(active_only=not all_flag)
@@ -82,7 +83,7 @@ def get_expense_categories_route():
 
 
 @cashbox_bp.post("/categories/expense")
-@login_required
+@permission_required(Perm.CASH_CATEGORIES_CREATE)
 def create_expense_category_route():
     data = json_body()
     code = data.get("code")
@@ -99,7 +100,7 @@ def create_expense_category_route():
 
 
 @cashbox_bp.put("/categories/expense/<int:cat_id>")
-@login_required
+@permission_required(Perm.CASH_CATEGORIES_UPDATE)
 def update_expense_category_route(cat_id: int):
     data = json_body()
     name = data.get("name")
@@ -126,14 +127,14 @@ def update_expense_category_route(cat_id: int):
 
 
 @cashbox_bp.get("/summary")
-@login_required
+@permission_required(Perm.CASH_MOVEMENTS_READ)
 def get_summary_route():
     summary = get_cash_summary()
     return jsonify(summary), 200
 
 
 @cashbox_bp.get("/movements")
-@login_required
+@permission_required(Perm.CASH_MOVEMENTS_READ)
 def list_movements_route():
     type_ = request.args.get("type")
     category = request.args.get("category")
@@ -152,7 +153,7 @@ def list_movements_route():
 
 
 @cashbox_bp.post("/movements")
-@login_required
+@permission_required(Perm.CASH_MOVEMENTS_CREATE)
 def create_movement_route():
     data = json_body()
     type_ = data.get("type")
@@ -180,7 +181,7 @@ def create_movement_route():
 
 
 @cashbox_bp.get("/orders/<int:order_id>/balance")
-@login_required
+@permission_required(Perm.CASH_MOVEMENTS_READ)
 def order_balance_route(order_id: int):
     try:
         info = get_order_balance_info(order_id)
@@ -192,7 +193,7 @@ def order_balance_route(order_id: int):
 
 
 @cashbox_bp.post("/orders/<int:order_id>/collect-balance")
-@login_required
+@permission_required(Perm.CASH_MOVEMENTS_CREATE)
 def collect_order_balance_route(order_id: int):
     data = json_body()
     amount = data.get("amount")

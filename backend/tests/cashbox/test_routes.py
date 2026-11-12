@@ -323,7 +323,7 @@ def second_operator_headers(app):
     from app.auth.models import User
 
     with app.app_context():
-        user = User(id=2, username="operador2", role="admin", is_active=True)
+        user = User(id=2, username="operador2", role="admin", is_active=True, is_superuser=True)
         user.set_password("operador234")
         db.session.add(user)
         db.session.commit()

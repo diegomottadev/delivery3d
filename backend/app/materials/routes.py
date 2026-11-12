@@ -1,13 +1,14 @@
 from flask import Blueprint, jsonify
 
-from app.auth.security import login_required
+from app.rbac.constants import Perm
+from app.rbac.security import permission_required
 from app.materials.models import Material
 
 materials_bp = Blueprint("materials", __name__, url_prefix="/api/materials")
 
 
 @materials_bp.get("")
-@login_required
+@permission_required(Perm.MATERIALS_READ)
 def list_materials_route():
     materials = Material.query.order_by(Material.brand, Material.type, Material.color).all()
     return (

@@ -2,43 +2,24 @@ from decimal import Decimal
 from flask import Blueprint, jsonify
 
 from app.http import json_body
-from app.auth.security import login_required
+from app.rbac.constants import Perm
+from app.rbac.security import permission_required
 from app.extensions import db
 from app.printers.models import Printer
-from app.settings.models import WorkshopSettings
+from app.settings.services import get_or_create_settings
 
 settings_bp = Blueprint("settings", __name__, url_prefix="/api/settings")
 
 
-def get_or_create_settings() -> WorkshopSettings:
-    settings = WorkshopSettings.query.first()
-    if not settings:
-        # Check if default printer exists
-        default_printer = Printer.query.first()
-        settings = WorkshopSettings(
-            id=1,
-            kwh_cost=Decimal("278.00"),
-            waste_purge_pct=Decimal("10.00"),
-            labor_cost=Decimal("1500.00"),
-            profit_multiplier=Decimal("2.00"),
-            currency_code="ARS",
-            currency_symbol="AR$",
-            default_printer_id=default_printer.id if default_printer else None,
-        )
-        db.session.add(settings)
-        db.session.commit()
-    return settings
-
-
 @settings_bp.get("")
-@login_required
+@permission_required(Perm.SETTINGS_READ)
 def get_settings_route():
     settings = get_or_create_settings()
     return jsonify(settings.to_dict()), 200
 
 
 @settings_bp.put("")
-@login_required
+@permission_required(Perm.SETTINGS_UPDATE)
 def update_settings_route():
     settings = get_or_create_settings()
     data = json_body()

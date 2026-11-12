@@ -1,6 +1,7 @@
 from flask import Blueprint, g, jsonify, request
 
-from app.auth.security import login_required
+from app.rbac.constants import Perm
+from app.rbac.security import has_permission, permission_required
 from app.http import json_body
 from app.orders.models import OrderStatus
 from app.orders.pricing import PricingValidationError
@@ -29,7 +30,7 @@ orders_bp = Blueprint("orders", __name__, url_prefix="/api/orders")
 
 
 @orders_bp.post("")
-@login_required
+@permission_required(Perm.ORDERS_CREATE)
 def create_order_route():
     payload = json_body()
     try:
@@ -51,7 +52,7 @@ def create_order_route():
 
 
 @orders_bp.put("/<int:order_id>")
-@login_required
+@permission_required(Perm.ORDERS_UPDATE)
 def update_order_route(order_id: int):
     payload = json_body()
     try:
@@ -87,7 +88,7 @@ def _pagination_args() -> tuple[int, int]:
 
 
 @orders_bp.get("")
-@login_required
+@permission_required(Perm.ORDERS_READ)
 def list_orders_route():
     try:
         limit, offset = _pagination_args()
@@ -101,7 +102,7 @@ def list_orders_route():
 
 
 @orders_bp.get("/<int:order_id>")
-@login_required
+@permission_required(Perm.ORDERS_READ)
 def get_order_route(order_id: int):
     try:
         order = get_order(order_id)
@@ -111,15 +112,17 @@ def get_order_route(order_id: int):
 
 
 @orders_bp.post("/<int:order_id>/quote")
-@login_required
+@permission_required(Perm.ORDERS_QUOTE)
 def calculate_quote_route(order_id: int):
     payload = json_body()
     quote_vars = payload.get("quote_vars", {})
     if not isinstance(quote_vars, dict):
         return jsonify(errors={"quote_vars": "quote_vars debe ser un objeto"}), 422
 
+    # E3-6 opción B: sin settings:update se usan los costos y el margen del taller.
+    use_workshop_costs = not has_permission(Perm.SETTINGS_UPDATE)
     try:
-        order, result = calculate_quote(order_id, quote_vars)
+        order, result = calculate_quote(order_id, quote_vars, use_workshop_costs=use_workshop_costs)
     except OrderNotFoundError:
         return jsonify(error="Order not found"), 404
     except InvalidOrderStateError as exc:
@@ -131,7 +134,7 @@ def calculate_quote_route(order_id: int):
 
 
 @orders_bp.post("/<int:order_id>/quote/confirm")
-@login_required
+@permission_required(Perm.ORDERS_QUOTE)
 def confirm_quote_route(order_id: int):
     payload = json_body()
     informed_price = payload.get("informed_price")
@@ -167,25 +170,25 @@ def _transition_route(order_id: int, target_status: str, accept_deposit: bool = 
 
 
 @orders_bp.post("/<int:order_id>/approve")
-@login_required
+@permission_required(Perm.ORDERS_APPROVE)
 def approve_order_route(order_id: int):
     return _transition_route(order_id, OrderStatus.APROBADO.value, accept_deposit=True)
 
 
 @orders_bp.post("/<int:order_id>/start-printing")
-@login_required
+@permission_required(Perm.ORDERS_PRODUCE)
 def start_printing_route(order_id: int):
     return _transition_route(order_id, OrderStatus.IMPRIMIENDO.value)
 
 
 @orders_bp.post("/<int:order_id>/mark-ready")
-@login_required
+@permission_required(Perm.ORDERS_PRODUCE)
 def mark_ready_route(order_id: int):
     return _transition_route(order_id, OrderStatus.LISTO.value)
 
 
 @orders_bp.post("/<int:order_id>/deliver")
-@login_required
+@permission_required(Perm.ORDERS_DELIVER)
 def deliver_order_route(order_id: int):
     payload = json_body()
     collect_balance = bool(payload.get("collect_balance", False))
@@ -210,7 +213,7 @@ def deliver_order_route(order_id: int):
 
 
 @orders_bp.get("/<int:order_id>/history")
-@login_required
+@permission_required(Perm.ORDERS_READ)
 def order_history_route(order_id: int):
     try:
         order = get_order_history(order_id)
@@ -220,7 +223,7 @@ def order_history_route(order_id: int):
 
 
 @orders_bp.delete("/<int:order_id>")
-@login_required
+@permission_required(Perm.ORDERS_DELETE)
 def delete_order_route(order_id: int):
     try:
         delete_order(order_id, deleted_by=g.current_user_id)

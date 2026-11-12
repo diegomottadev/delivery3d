@@ -10,8 +10,10 @@ from app.filaments.models import Filament
 from app.materials.models import Material
 from app.money import DECIMAL_10_2_MAX, DEFAULT_MATERIAL_COST_PER_KG, has_sub_cent_precision
 from app.orders.models import Order, OrderItem, OrderQuote, OrderStatus, OrderStatusHistory, _utcnow
-from app.orders.pricing import QuoteResult, compute_quote
+from app.orders.pricing import PricingValidationError, QuoteResult, compute_quote
 from app.orders.state_machine import is_valid_transition
+from app.printers.models import Printer
+from app.settings.services import get_or_create_settings
 
 audit_logger = logging.getLogger("delivery3d.audit")
 
@@ -225,10 +227,58 @@ def get_order_pricing(order: Order) -> QuoteResult | None:
     return compute_quote(_pricing_items(order), quote_vars)
 
 
-def calculate_quote(order_id: int, quote_vars: dict) -> tuple[Order, QuoteResult]:
+def workshop_quote_vars(requested: dict) -> dict:
+    """E3-6 opción B (rbac-access-control): "usa siempre los COSTOS y el margen del taller".
+
+    Para quien no puede cambiar la configuración (sin `settings:update`): descarta del pedido
+    kwh_cost, machine_power_watts, machine_cost_per_hour, waste_purge_pct, labor_cost,
+    labor_cost_per_hour, profit_margin_pct y profit_multiplier, y los toma de
+    `workshop_settings` y de la impresora. Solo respeta `printer_id` (o la impresora por
+    defecto) y `labor_time_minutes` (o el default del taller). Mano de obra siempre por hora.
+    """
+    settings = get_or_create_settings()
+
+    printer_id = requested.get("printer_id")
+    if printer_id is None:
+        printer_id = settings.default_printer_id
+    if printer_id is None:
+        raise PricingValidationError(
+            {"printer_id": "Elegí una impresora: el taller no tiene una impresora por defecto"}
+        )
+    if isinstance(printer_id, bool) or not isinstance(printer_id, int):
+        raise PricingValidationError({"printer_id": "printer_id debe ser un número entero"})
+    printer = db.session.get(Printer, printer_id)
+    if printer is None:
+        raise PricingValidationError({"printer_id": "La impresora no existe"})
+
+    labor_time_minutes = requested.get("labor_time_minutes")
+    if labor_time_minutes is None:
+        labor_time_minutes = settings.default_labor_time_minutes
+
+    return {
+        "printer_id": printer.id,
+        "kwh_cost": settings.kwh_cost,
+        "machine_power_watts": printer.power_watts,
+        "machine_cost_per_hour": printer.cost_per_hour,
+        "waste_purge_pct": settings.waste_purge_pct,
+        "labor_cost_per_hour": settings.labor_cost_per_hour,
+        "labor_time_minutes": labor_time_minutes,
+        "profit_multiplier": settings.profit_multiplier,
+    }
+
+
+def calculate_quote(
+    order_id: int, quote_vars: dict, use_workshop_costs: bool = False
+) -> tuple[Order, QuoteResult]:
     """Creates/overwrites the order's OrderQuote parameters and returns the computed result.
-    Does not change order.status — see confirm_quote for the NEW -> PRESUPUESTADO transition."""
+    Does not change order.status — see confirm_quote for the NEW -> PRESUPUESTADO transition.
+
+    `use_workshop_costs=True` (actor sin `settings:update`) reemplaza costos y margen del
+    pedido por los del taller — ver `workshop_quote_vars`.
+    """
     order = get_order(order_id)
+    if use_workshop_costs:
+        quote_vars = workshop_quote_vars(quote_vars)
     result = compute_quote(_pricing_items(order), quote_vars)  # raises PricingValidationError
 
     try:

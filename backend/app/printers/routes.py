@@ -3,7 +3,8 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy.exc import IntegrityError
 
 from app.http import json_body
-from app.auth.security import login_required
+from app.rbac.constants import Perm
+from app.rbac.security import permission_required
 from app.extensions import db
 from app.printers.models import Printer
 
@@ -11,7 +12,7 @@ printers_bp = Blueprint("printers", __name__, url_prefix="/api/printers")
 
 
 @printers_bp.get("")
-@login_required
+@permission_required(Perm.PRINTERS_READ)
 def list_printers_route():
     include_inactive = request.args.get("include_inactive", "false").lower() in ("true", "1")
     query = Printer.query
@@ -22,7 +23,7 @@ def list_printers_route():
 
 
 @printers_bp.post("")
-@login_required
+@permission_required(Perm.PRINTERS_CREATE)
 def create_printer_route():
     data = json_body()
     name = (data.get("name") or "").strip()
@@ -65,7 +66,7 @@ def create_printer_route():
 
 
 @printers_bp.put("/<int:printer_id>")
-@login_required
+@permission_required(Perm.PRINTERS_UPDATE)
 def update_printer_route(printer_id: int):
     printer = db.session.get(Printer, printer_id)
     if not printer:

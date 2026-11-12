@@ -212,7 +212,7 @@ Se define como `frozenset` literal, no como "todo menos…": un permiso nuevo **
 ### Preguntas de la etapa 3 (abiertas)
 - **E3-6:** con `orders:quote` el operador fija margen, costos de energía y máquina, y precio informado **por pedido**. ¿Es aceptable, porque presupuestar es su tarea? ¿O hay que forzar que esos valores salgan de `workshop_settings` cuando el actor no tiene `settings:update`? Esto último sería lógica en `calculate_quote`; se trataría en la etapa 5.
 
-## Etapa 4 — tests en rojo (HECHO, pendiente etapa 5)
+## Etapa 4 — tests en rojo (HECHO; en verde tras etapa 5)
 
 E3-6: el usuario eligió la **opción B**. Sus tests se escriben en esta etapa; la implementación va en la etapa 5.
 
@@ -263,6 +263,31 @@ Con `settings:update`, el body se respeta completo.
 | `test_rbac_me_permissions.py` | 5 | `GET /api/auth/me/permissions`. |
 | `test_rbac_quote_pricing_lock.py` | 10 | Opción B. |
 | `test_rbac_perms_frontend_sync.py` | 2 | Sincronía con `perms.js`. |
+
+## Etapa 5 — implementación (HECHO)
+
+### Código
+- **`backend/app/rbac/services.py`:** se agregó `get_effective_permissions(user_id)`. Resuelve los permisos con una sola consulta `UNION`: grupo → roles → permisos, más roles directos → permisos.
+- **`backend/app/rbac/security.py`** (nuevo):
+  - `get_user_permissions()` cachea el resultado en `g`. El cache está atado al request actual y al `user_id`, así que nunca se reusa en otro request aunque se comparta el app context. Para un superusuario devuelve `ALL_PERMISSION_CODES`.
+  - `has_permission(perm)`.
+  - `permission_required(*perms)`:
+    - Envuelve `login_required` y exige todos los permisos (AND).
+    - Si falta alguno → 403 `{"error", "code": "FORBIDDEN"}`.
+    - Falla al importar el módulo si recibe un string o ningún permiso: solo acepta miembros de `Perm`.
+- **`backend/app/auth/routes.py`:** nuevo `GET /api/auth/me/permissions`, que solo exige `login_required`.
+- **`backend/app/auth/security.py`:**
+  - `roles_required` queda marcado DEPRECADO y sin usos.
+  - El JWT ya no incluye `username` ni `role`, solo `sub`, `iss`, `iat` y `exp`. `login_required` nunca los leía, y el login y `/me` siguen devolviendo `role` en el cuerpo.
+- **Blueprints** `orders`, `cashbox`, `printers`, `settings`, `materials` y `filaments`: los 30 endpoints pasan de `@login_required` a `@permission_required(Perm.X)` según `api-contract.md`. Los 2 de `auth` no cambian: `/login` sigue público y `/me` solo exige sesión.
+- **Opción B:**
+  - `backend/app/orders/services.py`: nuevo `workshop_quote_vars(requested)` y parámetro `calculate_quote(..., use_workshop_costs)`.
+  - `backend/app/orders/routes.py` pasa `use_workshop_costs = not has_permission(Perm.SETTINGS_UPDATE)`.
+  - Un `printer_id` que no es entero o que no existe → 422 con `errors.printer_id`.
+- **`backend/app/settings/services.py`** (nuevo): `get_or_create_settings()` se movió desde `settings/routes.py`, que ahora lo importa. Así `orders` no depende de un `routes.py`. El comportamiento no cambia.
+- **`backend/tests/rbac/test_rbac_workshop_routes.py`** (nuevo, 105 casos):
+  - Por cada uno de los 30 endpoints: sin permiso → 403 FORBIDDEN, con exactamente su permiso → ni 401 ni 403, y sin token → 401.
+  - Además verifica que la lista de endpoints cubre los 20 permisos de negocio, qué puede y qué no puede hacer el rol "Operador" sembrado, y que `/api/auth/me` y `/me/permissions` solo exigen sesión.
 
 ## Involved Files (real paths)
 Relevados para esta etapa (no se modifican en la etapa 1):
