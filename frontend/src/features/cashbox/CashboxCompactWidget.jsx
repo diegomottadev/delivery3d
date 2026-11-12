@@ -411,6 +411,7 @@ const CashboxCompactWidget = forwardRef(({ onMovementCreated }, ref) => {
                                 }
                             }}
                             mode="decimal"
+                            locale="es-AR"
                             minFractionDigits={2}
                             maxFractionDigits={2}
                             min={0.01}

@@ -47,6 +47,8 @@ Los textos del RBAC estaban escritos para FastAPI y este proyecto usa Flask. Cop
 ### 2.6 El proyecto no está en Git
 Hoy se modificaron decenas de archivos sin historial de cambios. Si algo sale mal, no hay forma fácil de volver atrás ni de ver qué cambió. Además, los agentes que trabajan en paralelo escribiendo código necesitan Git para no pisarse: cada uno trabaja en su propia copia (*worktree*) y después se unen los cambios. **Es la recomendación más importante de este informe** (ver sección 4).
 
+**Actualización (ya pasó):** se inició Git y, en la ronda siguiente, el agente de backend agregó columnas al modelo de usuarios mientras trabajaba en la misma carpeta que usa tu contenedor, que toma el código en vivo. Como la migración todavía no estaba aplicada, **todos los logins dieron error 500** durante unos minutos. Se resolvió moviendo el trabajo de los agentes a una copia aislada (`.worktrees/rbac`, rama `feat/rbac`). La app que usás no ve nada de lo que está en esa copia hasta que se aprueba y se une. Regla desde ahora: **los agentes que escriben código trabajan siempre en un worktree.**
+
 ---
 
 ## 3. Skills nuevos que recomiendo
