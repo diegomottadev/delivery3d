@@ -1,7 +1,7 @@
 # API contract — rbac-access-control
 
 > **Fuente única del contrato de API** entre backend y frontend para este change.
-> Estado: **BORRADOR** (etapa 2). Se cierra en la etapa 6. Lo marcado **🔒 FIJO** ya no cambia y el frontend puede construir sobre eso.
+> Estado: **BORRADOR** (actualizado en etapa 3 con Q1–Q4 respondidas). Se cierra en la etapa 6. Lo marcado **🔒 FIJO** ya no cambia y el frontend puede construir sobre eso.
 > Parte de `frontend-plan.md` §10, con las decisiones aprobadas por el usuario (ver `design.md` → "Respuestas del usuario").
 
 ---
@@ -21,7 +21,7 @@ Forma: `{"error": "<mensaje en español>", "code": "<MACHINE_CODE>"}`; 422 agreg
 | HTTP | `code` | Cuándo |
 |---|---|---|
 | 401 | *(sin `code`, comportamiento actual de `login_required`)* | Sin token, token inválido/expirado, usuario inexistente o inactivo. 🔒 |
-| 403 | `FORBIDDEN` | Falta algún permiso requerido (AND). Mensaje: `"Acceso denegado: permisos insuficientes"`. 🔒 |
+| 403 | `FORBIDDEN` | Falta algún permiso requerido por `permission_required` (AND: hacen falta todos). Mensaje: `"Acceso denegado: permisos insuficientes"`. Aplica a **todos** los endpoints protegidos de la API (`/api/orders`, `/api/cashbox`, `/api/printers`, `/api/settings`, `/api/materials`, `/api/filaments`, `/api/rbac`), no solo a `/api/rbac`. 🔒 |
 | 404 | `NOT_FOUND` | Usuario / grupo / rol / asignación inexistente. |
 | 422 | `VALIDATION_ERROR` | Body inválido (tipos, vacíos, largo). |
 | 422 | `UNKNOWN_PERMISSION` | `PUT /roles/{id}/permissions` con un code que no está en el catálogo. |
@@ -30,8 +30,22 @@ Forma: `{"error": "<mensaje en español>", "code": "<MACHINE_CODE>"}`; 422 agreg
 | 409 | `ALREADY_ASSIGNED` | El rol ya está asignado (al grupo o directo al usuario). |
 | 409 | `ROLE_IN_USE` | `DELETE /roles/{id}` con el rol asignado a algún grupo o usuario (FK `RESTRICT`). |
 | 409 | `SELF_LOCKOUT` | La operación dejaría al usuario actual (no superuser) sin `rbac:manage` efectivo. Rollback completo. |
-| 409 | `SELF_ASSIGNMENT` | El usuario actual intenta asignarse a sí mismo un rol directo o agregarse a un grupo (ver §6, pregunta abierta Q1). |
+| 409 | `SELF_ASSIGNMENT` | La operación le daría al usuario actual roles o permisos nuevos (regla completa abajo). Rollback completo. 🔒 |
 
+### Regla `SELF_ASSIGNMENT` (Q1 + Q2 aprobadas) 🔒
+
+Responde **409** `{"error": "No podés asignarte roles ni permisos a vos mismo", "code": "SELF_ASSIGNMENT"}` cuando el actor (`g.current_user`) intenta:
+
+| Operación | Bloqueada si… |
+|---|---|
+| `POST /api/rbac/users/{user_id}/roles` | `user_id` = actor. |
+| `POST /api/rbac/users/{user_id}/groups` | `user_id` = actor. |
+| `POST /api/rbac/groups/{id}/members` | `user_id` del body = actor. |
+| `POST /api/rbac/groups/{id}/roles` | el actor es **miembro** del grupo `{id}`. |
+| `PUT /api/rbac/roles/{id}/permissions` | el actor **tiene** el rol `{id}` (directo o por cualquiera de sus grupos) **y** el nuevo set **agrega** al menos un permiso que el rol no tenía. Quitar permisos sí se permite (sujeto a `SELF_LOCKOUT`). |
+
+- Los superusuarios quedan exentos: ya tienen todo, no ganan nada.
+- Orden de chequeo en mutaciones: `FORBIDDEN` → `NOT_FOUND` → `VALIDATION_ERROR` → `SELF_ASSIGNMENT` / `SELF_LOCKOUT` → conflictos (`ALREADY_*`, `NAME_TAKEN`, `ROLE_IN_USE`).
 - **No** existe `LAST_ADMIN`: el superusuario cubre el caso "nadie puede administrar".
 
 ---
@@ -96,7 +110,7 @@ Forma: `{"error": "<mensaje en español>", "code": "<MACHINE_CODE>"}`; 422 agreg
 `DELETE /api/rbac/users/{user_id}/roles/{role_id}` → `204` · 404 · 409 `SELF_LOCKOUT`
 
 ### Acceso efectivo
-`GET /api/rbac/users/{user_id}/access` (**no** `/effective-access`)
+`GET /api/rbac/users/{user_id}/access` (**no** `/effective-access`). Requiere `rbac:read`, y **también vale para el propio usuario** (`user_id` = actor): las lecturas no tienen restricción de "sí mismo". El frontend lo usa con su propio id para deshabilitar las acciones que darían `SELF_ASSIGNMENT` indirecto: grupos de los que es miembro (`roles[].sources[].group`) y roles que tiene (`roles[].role`). 🔒
 ```json
 200
 {
@@ -129,17 +143,26 @@ Forma: `{"error": "<mensaje en español>", "code": "<MACHINE_CODE>"}`; 422 agreg
 ## 3. Grupos (`rbac:read` / `rbac:manage`)
 
 `GET /api/rbac/groups?q=` → `200 [ { "id": 3, "name": "Operadores", "description": "…", "members_count": 4, "roles_count": 1 } ]`
-`POST /api/rbac/groups` `{ "name": "Operadores", "description": "…" }` → `201 {grupo}` · 409 `NAME_TAKEN` · 422
-`GET /api/rbac/groups/{id}` → `200 {grupo}`
-`PUT /api/rbac/groups/{id}` (mismo body) → `200 {grupo}` · 409 `NAME_TAKEN` · 422
+**`GroupDetail`** (respuesta de todo endpoint que crea o modifica un grupo o su contenido):
+```json
+{ "id": 3, "name": "Operadores", "description": "Operadores del taller",
+  "created_at": "2026-11-12T12:00:00", "updated_at": "2026-11-12T12:00:00",
+  "members": [ { "id": 7, "username": "ana", "is_active": true } ],
+  "roles":   [ { "id": 2, "name": "Operador", "description": "…" } ] }
+```
+(`members` ordenado por `username`; `roles` por `name`.)
+
+`POST /api/rbac/groups` `{ "name": "Operadores", "description": "…" }` → `201 GroupDetail` · 409 `NAME_TAKEN` · 422
+`GET /api/rbac/groups/{id}` → `200 GroupDetail`
+`PUT /api/rbac/groups/{id}` (mismo body) → `200 GroupDetail` · 409 `NAME_TAKEN` · 422
 `DELETE /api/rbac/groups/{id}` → `204` (membresías y roles del grupo se borran en cascada) · 409 `SELF_LOCKOUT`
 
 `GET /api/rbac/groups/{id}/members` → `200 [ { "id": 7, "username": "ana", "is_active": true } ]`
-`POST /api/rbac/groups/{id}/members` `{ "user_id": 7 }` → `201` · 409 `ALREADY_MEMBER` · 409 `SELF_ASSIGNMENT`
+`POST /api/rbac/groups/{id}/members` `{ "user_id": 7 }` → `201 GroupDetail` (actualizado) · 409 `ALREADY_MEMBER` · 409 `SELF_ASSIGNMENT`
 `DELETE /api/rbac/groups/{id}/members/{user_id}` → `204` · 409 `SELF_LOCKOUT`
 
 `GET /api/rbac/groups/{id}/roles` → `200 [ { "id": 2, "name": "Operador", "description": "…" } ]`
-`POST /api/rbac/groups/{id}/roles` `{ "role_id": 2 }` → `201` · 409 `ALREADY_ASSIGNED` · (Q1: ¿`SELF_ASSIGNMENT` si el actor es miembro?)
+`POST /api/rbac/groups/{id}/roles` `{ "role_id": 2 }` → `201 GroupDetail` (actualizado) · 409 `ALREADY_ASSIGNED` · 409 `SELF_ASSIGNMENT` (si el actor es miembro del grupo)
 `DELETE /api/rbac/groups/{id}/roles/{role_id}` → `204` · 409 `SELF_LOCKOUT`
 
 ---
@@ -147,11 +170,19 @@ Forma: `{"error": "<mensaje en español>", "code": "<MACHINE_CODE>"}`; 422 agreg
 ## 4. Roles (`rbac:read` / `rbac:manage`)
 
 `GET /api/rbac/roles?q=` → `200 [ { "id": 2, "name": "Operador", "description": "…", "permissions_count": 14, "groups_count": 1, "direct_users_count": 0 } ]`
-`POST /api/rbac/roles` `{ "name": "…", "description": "…" }` → `201` · 409 `NAME_TAKEN` · 422
-`GET /api/rbac/roles/{id}` → `200 { "id": 2, "name": "Operador", "description": "…", "permissions": ["orders:read", "orders:update"] }`
-`PUT /api/rbac/roles/{id}` `{ "name": "…", "description": "…" }` → `200` · 409 `NAME_TAKEN`
+**`RoleDetail`** (respuesta de todo endpoint que crea o modifica un rol):
+```json
+{ "id": 2, "name": "Operador", "description": "…",
+  "created_at": "2026-11-12T12:00:00", "updated_at": "2026-11-12T12:00:00",
+  "permissions": ["orders:read", "orders:update"] }
+```
+(`permissions` ordenado alfabéticamente.)
+
+`POST /api/rbac/roles` `{ "name": "…", "description": "…" }` → `201 RoleDetail` · 409 `NAME_TAKEN` · 422
+`GET /api/rbac/roles/{id}` → `200 RoleDetail`
+`PUT /api/rbac/roles/{id}` `{ "name": "…", "description": "…" }` → `200 RoleDetail` · 409 `NAME_TAKEN` · 422
 `DELETE /api/rbac/roles/{id}` → `204` · 409 `ROLE_IN_USE` (asignado a algún grupo o usuario: hay que desasignarlo antes; sus `role_permissions` se borran en cascada)
-`PUT /api/rbac/roles/{id}/permissions` `{ "permissions": ["orders:read", "rbac:read"] }` (reemplazo completo) → `200 {rol}` · 422 `UNKNOWN_PERMISSION` · 409 `SELF_LOCKOUT`
+`PUT /api/rbac/roles/{id}/permissions` `{ "permissions": ["orders:read", "rbac:read"] }` (reemplazo completo) → `200 RoleDetail` · 422 `UNKNOWN_PERMISSION` · 409 `SELF_LOCKOUT` · 409 `SELF_ASSIGNMENT` (si el actor tiene el rol y el set agrega permisos)
 
 ---
 
@@ -160,18 +191,19 @@ Forma: `{"error": "<mensaje en español>", "code": "<MACHINE_CODE>"}`; 422 agreg
 `GET /api/rbac/permissions`
 ```json
 200
-[ { "resource": "orders",
+[ { "resource": "orders", "resource_label": "Pedidos",
     "permissions": [
       { "code": "orders:delete", "action": "delete", "description": "Eliminar pedidos",
         "roles": [ { "id": 2, "name": "Encargado" } ] } ] },
-  { "resource": "rbac", "permissions": [ … ] } ]
+  { "resource": "rbac", "resource_label": "Seguridad", "permissions": [ … ] } ]
 ```
 - Sin POST/PUT/DELETE: el catálogo sale del enum `Perm`.
-- `resource_label` (etiqueta en español) del plan de frontend: **pendiente** (Q3).
+- `resource_label` sale de `RESOURCE_LABELS` en `backend/app/rbac/constants.py` (Q3 aprobada). Los grupos vienen en el orden de `RESOURCE_LABELS`; dentro de cada grupo, los permisos van en el orden del enum `Perm`.
+- Catálogo propuesto: ver `design.md` → "Etapa 3 — propuesta de catálogo".
 
 ---
 
-## 6. Endpoints de impacto (borrador, a confirmar en etapa 6)
+## 6. Endpoints de impacto (entran en etapa 6 — Q4 aprobada; shape a cerrar en etapa 6)
 
 Propuestos por el frontend para `ConfirmImpactDialog`; solo lectura (`rbac:read`), sin efectos:
 
@@ -201,9 +233,9 @@ El backend rechaza igual con 409 `SELF_LOCKOUT`; el impacto es solo UX.
 
 ---
 
-## Preguntas abiertas (se cierran antes / durante la etapa 6)
+## Preguntas respondidas
 
-- **Q1 — Auto-escalada indirecta.** "Nadie se asigna roles a sí mismo" está cubierto para rol directo y para agregarse a un grupo. Pero quien tiene `rbac:manage` puede (a) agregar un rol a un grupo del que es miembro, o (b) agregar permisos a un rol que ya tiene. ¿Se bloquean también con `SELF_ASSIGNMENT`? Propuesta: **sí** para (a) y para (b) cuando el cambio **agrega** permisos que el actor no tenía. Nota: `rbac:manage` igual puede crear un usuario-cómplice… pero no hay ABM de usuarios, así que el bloqueo es efectivo.
-- **Q2 — Status de `SELF_ASSIGNMENT`.** Propuesto 409 (regla de negocio, como `SELF_LOCKOUT`), no 403, para que el frontend no lo confunda con "te quitaron permisos" y no dispare `refresh()`.
-- **Q3 — `resource_label`.** ¿El backend expone una etiqueta en español por recurso (dict en `constants.py`) o el frontend la mapea? Propuesta: backend (`RESOURCE_LABELS` junto a `PERM_DESCRIPTIONS`), para que haya un único lugar.
-- **Q4 — Endpoints de impacto (§6).** Son 6 endpoints extra; ¿entran en la etapa 6 o quedan para una iteración posterior?
+- **Q1:** sí, también se bloquea la autoescalada indirecta → regla `SELF_ASSIGNMENT` (§0).
+- **Q2:** `SELF_ASSIGNMENT` responde 409, igual que `SELF_LOCKOUT`.
+- **Q3:** el backend da las etiquetas: `RESOURCE_LABELS` en `constants.py`, y `resource_label` en el catálogo.
+- **Q4:** los endpoints de impacto entran en la etapa 6.
