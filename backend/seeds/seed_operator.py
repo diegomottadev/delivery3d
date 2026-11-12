@@ -1,4 +1,5 @@
 """Seeds the default administrator operator (id=1) with a secure hashed password.
+It is also the RBAC superuser (is_superuser=True, rbac-access-control).
 
 Credenciales tomadas del entorno / backend/.env:
 - SEED_OPERATOR_USERNAME (default: operador)
@@ -29,6 +30,7 @@ def run() -> None:
                 username=SEED_USERNAME,
                 role="admin",
                 is_active=True,
+                is_superuser=True,
             )
             operator.set_password(SEED_PASSWORD)
             db.session.add(operator)
@@ -37,6 +39,7 @@ def run() -> None:
         else:
             operator.role = "admin"
             operator.is_active = True
+            operator.is_superuser = True
             operator.set_password(SEED_PASSWORD)
             db.session.commit()
             print(f"Updated seed operator: id={operator.id}, username={operator.username}")

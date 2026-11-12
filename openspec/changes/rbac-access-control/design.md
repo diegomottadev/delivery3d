@@ -1,6 +1,6 @@
 # Design: rbac-access-control
 
-> **Estado:** Etapa 1 aprobada. Etapa 2 (migración) implementada, **SQL generado offline, sin aplicar** a la base real (pendiente de aprobación del usuario).
+> **Estado:** Etapas 1 y 2 aprobadas; migración `44a4db68ccde` aplicada en desarrollo. Etapa 3 implementada (catálogo + seed); seed **no aplicado** a desarrollo (solo `--dry-run`).
 > Contrato de API: fuente única en `api-contract.md` (borrador; se cierra en etapa 6).
 
 ## Respuestas del usuario (etapa 1)
@@ -41,6 +41,176 @@ Decisiones adicionales acordadas con el plan de frontend (`frontend-plan.md`):
 - Suite completa con modelos nuevos sobre la base de test: **234 passed** (verificado en el worktree `feat/rbac`).
 - ⚠️ **Despliegue:** el contenedor `delivery3d-backend` monta el repo en vivo. Cambiar `User` sin aplicar la migración rompe el login (`Unknown column users.is_superuser`). Por eso el trabajo vive en el worktree `.worktrees/rbac` (rama `feat/rbac`) y el orden de despliegue es: **primero `flask db upgrade`, después el código**.
 - ⚠️ El downgrade borra `is_superuser`/`updated_at` y todas las asignaciones RBAC (pérdida de datos esperable en un downgrade de tablas nuevas). `users.role` no se toca, así que un re-upgrade reconstruye `is_superuser` desde `role`.
+
+## Respuestas del usuario (etapa 2 → preguntas abiertas del contrato)
+
+| # | Decisión |
+|---|---|
+| Q1 | Se bloquea también la autoescalada indirecta con `SELF_ASSIGNMENT`: agregar un rol a un grupo del que el actor es miembro, o sumar permisos a un rol que el actor ya tiene. Regla completa en `api-contract.md` §0. |
+| Q2 | `SELF_ASSIGNMENT` = 409, como `SELF_LOCKOUT`. |
+| Q3 | Las etiquetas las da el backend: `RESOURCE_LABELS` en `constants.py`, expuestas como `resource_label` en `GET /api/rbac/permissions`. |
+| Q4 | Los endpoints de impacto entran en la etapa 6. |
+
+Estado de la etapa 2: el usuario aprobó el SQL; la migración `44a4db68ccde` está aplicada en la base de desarrollo y commiteada en `feat/rbac` (`d44f18e`).
+
+## Etapa 3 — propuesta de catálogo (APROBADA; ver "Etapa 3 — catálogo y seed" para lo final)
+
+### Relevamiento: 32 endpoints existentes en 7 blueprints (+ `rbac` en etapa 6)
+| Blueprint | Endpoints |
+|---|---|
+| `orders` (12) | `POST ""`, `PUT /<id>`, `GET ""`, `GET /<id>`, `POST /<id>/quote` (calcula, no cambia estado), `POST /<id>/quote/confirm` (nuevo→presupuestado con precio informado), `POST /<id>/approve` (opcional `deposit_amount` → **crea movimiento de caja "seña"**), `POST /<id>/start-printing`, `POST /<id>/mark-ready`, `POST /<id>/deliver` (opcional `collect_balance` → **crea movimiento de caja "saldo"**), `GET /<id>/history`, `DELETE /<id>` |
+| `cashbox` (11) | `GET/POST /categories/income`, `PUT /categories/income/<id>`, `GET/POST /categories/expense`, `PUT /categories/expense/<id>`, `GET /summary`, `GET/POST /movements`, `GET /orders/<id>/balance`, `POST /orders/<id>/collect-balance` |
+| `printers` (3) | `GET ""`, `POST ""`, `PUT /<id>` |
+| `settings` (2) | `GET ""`, `PUT ""` |
+| `materials` (1) / `filaments` (1) | `GET ""` |
+| `auth` (2 + 1 nuevo) | `POST /login` (público), `GET /me`, `GET /me/permissions` (nuevo, etapa 5): **solo `login_required`, sin permiso** |
+| `rbac` (etapa 6) | Lecturas → `rbac:read`; escrituras → `rbac:manage` |
+
+No existen endpoints de borrado (salvo pedidos) ni de cancelación: **no se crean permisos sin endpoint** (no hay `printers:delete`, `cash_movements:delete`, etc.). Si mañana se agrega el endpoint, se agrega el permiso.
+
+### Catálogo `Perm` propuesto (22 permisos)
+
+Miembro del enum = `RESOURCE_ACTION` en mayúsculas (`Perm.ORDERS_READ = "orders:read"`), igual nombre en `perms.js`.
+
+| # | `code` | resource | action | Descripción (`PERM_DESCRIPTIONS`) | Endpoints que protege | Operador |
+|---|---|---|---|---|---|---|
+| 1 | `orders:read` | orders | read | Ver pedidos, su detalle e historial de estados | `GET /api/orders`, `GET /api/orders/<id>`, `GET /api/orders/<id>/history` | ✅ |
+| 2 | `orders:create` | orders | create | Cargar pedidos nuevos (y clientes nuevos desde el alta) | `POST /api/orders` | ✅ |
+| 3 | `orders:update` | orders | update | Editar las piezas y el cliente de un pedido | `PUT /api/orders/<id>` | ✅ |
+| 4 | `orders:delete` | orders | delete | Eliminar pedidos definitivamente (en cualquier estado) | `DELETE /api/orders/<id>` | ❌ |
+| 5 | `orders:quote` | orders | quote | Calcular y confirmar el presupuesto de un pedido | `POST /api/orders/<id>/quote`, `POST /api/orders/<id>/quote/confirm` | ✅ |
+| 6 | `orders:approve` | orders | approve | Aprobar un pedido presupuestado y registrar la seña | `POST /api/orders/<id>/approve` | ✅ |
+| 7 | `orders:produce` | orders | produce | Avanzar la producción: pasar a imprimiendo y a listo | `POST /api/orders/<id>/start-printing`, `POST /api/orders/<id>/mark-ready` | ✅ |
+| 8 | `orders:deliver` | orders | deliver | Entregar un pedido y cobrar el saldo | `POST /api/orders/<id>/deliver` | ✅ |
+| 9 | `cash_movements:read` | cash_movements | read | Ver el saldo de caja, los movimientos y el saldo de cada pedido | `GET /api/cashbox/summary`, `GET /api/cashbox/movements`, `GET /api/cashbox/orders/<id>/balance` | ✅ |
+| 10 | `cash_movements:create` | cash_movements | create | Registrar ingresos y egresos de caja, incluido el cobro de saldos | `POST /api/cashbox/movements`, `POST /api/cashbox/orders/<id>/collect-balance` | ✅ |
+| 11 | `cash_categories:read` | cash_categories | read | Ver las categorías de ingresos y egresos | `GET /api/cashbox/categories/income`, `GET /api/cashbox/categories/expense` | ✅ |
+| 12 | `cash_categories:create` | cash_categories | create | Crear categorías de ingresos y egresos | `POST /api/cashbox/categories/income`, `POST /api/cashbox/categories/expense` | ✅ |
+| 13 | `cash_categories:update` | cash_categories | update | Editar y activar/desactivar categorías de ingresos y egresos | `PUT /api/cashbox/categories/income/<id>`, `PUT /api/cashbox/categories/expense/<id>` | ✅ |
+| 14 | `printers:read` | printers | read | Ver las impresoras del taller | `GET /api/printers` | ✅ |
+| 15 | `printers:create` | printers | create | Dar de alta impresoras | `POST /api/printers` | ✅ |
+| 16 | `printers:update` | printers | update | Editar y activar/desactivar impresoras | `PUT /api/printers/<id>` | ✅ |
+| 17 | `settings:read` | settings | read | Ver la configuración del taller | `GET /api/settings` | ✅ |
+| 18 | `settings:update` | settings | update | Cambiar la configuración del taller (costos, margen, moneda) | `PUT /api/settings` | ✅ |
+| 19 | `materials:read` | materials | read | Ver el catálogo de materiales | `GET /api/materials` | ✅ |
+| 20 | `filaments:read` | filaments | read | Ver el catálogo de tipos de filamento | `GET /api/filaments` | ✅ |
+| 21 | `rbac:read` | rbac | read | Ver usuarios, grupos, roles, permisos y accesos | `GET /api/rbac/*` (etapa 6) | ❌ (ver pregunta E3-2) |
+| 22 | `rbac:manage` | rbac | manage | Administrar grupos, roles y asignaciones de acceso | `POST/PUT/DELETE /api/rbac/*` (etapa 6) | ❌ |
+
+### Criterios aplicados
+- **Recursos = nombre del endpoint en inglés y plural.** `cashbox` es un módulo, no un recurso: sus sub-recursos son `movements` y `categories`. Se prefijan con `cash_` (`cash_movements`, `cash_categories`) para que el code se entienda solo, y coinciden con las tablas `cash_movements` / `cash_*_categories`. `settings` y `rbac` quedan como en el prefijo del endpoint. Ver pregunta E3-1.
+- **Acciones de negocio solo con consecuencias distintas:**
+  - `quote` fija el precio que se le informa al cliente.
+  - `approve` puede **mover plata** (seña), igual que `deliver` (saldo). Están separadas de `produce`, que solo cambia el estado del taller.
+  - `start-printing` y `mark-ready` comparten `produce`: misma consecuencia (avance interno), no un permiso por endpoint.
+- **Income y expense comparten permiso** (`cash_movements:create`, `cash_categories:*`): mismo endpoint, mismo impacto contable. Separar "registrar egresos" sería un permiso por campo `type`; si se necesita, se agrega como acción de negocio (`cash_movements:create_expense`) en otro cambio.
+- **`approve` y `deliver` no exigen además `cash_movements:create`.** La seña y el cobro del saldo son parte de la transición: quien puede aprobar o entregar puede registrar esos ingresos. La alternativa (chequeo condicional si viene `deposit_amount` / `collect_balance`) mete lógica de autorización dentro del route. Ver pregunta E3-3.
+- `materials:read` y `filaments:read` están separados aunque el formulario de pedidos necesita ambos: son recursos con endpoint propio. Si en el futuro hay ABM de materiales, se suma `materials:create/update`.
+- Sin comodines, sin ownership, sin nombres de áreas. `code` inmutable: renombrar = permiso nuevo + migración de datos.
+
+### `RESOURCE_LABELS` (orden = orden de presentación en el catálogo)
+| resource | label |
+|---|---|
+| `orders` | Pedidos |
+| `cash_movements` | Movimientos de caja |
+| `cash_categories` | Categorías de caja |
+| `printers` | Impresoras |
+| `settings` | Configuración del taller |
+| `materials` | Materiales |
+| `filaments` | Filamentos |
+| `rbac` | Seguridad |
+
+### Rol "Operador" (grupo "Operadores") — SUPERADO por E3-4: el final tiene 14 permisos
+20 permisos: todo el catálogo **menos `orders:delete` y `rbac:manage`**, y en esta propuesta también **menos `rbac:read`** (no es un permiso de negocio). Queda: los 1–3 y 5–20 de la tabla.
+Constante en código: `OPERATOR_ROLE_PERMS: frozenset[Perm]`, definida como `set(Perm) - {ORDERS_DELETE, RBAC_READ, RBAC_MANAGE}`, para que un permiso de negocio nuevo entre solo en el rol al re-crearlo (ver seed).
+
+### Diseño del seed (`backend/seeds/seed_rbac.py`, sin escribir todavía)
+La lógica vive en `backend/app/rbac/services.py` (`sync_permission_catalog()`, `bootstrap_operator_group()`), así los tests la llaman directo sobre `create_all`. El script de `seeds/` es un wrapper delgado, igual que `seed_operator.py`.
+
+1. **Catálogo (upsert por `code`), en una transacción:**
+   - Por cada miembro de `Perm`: si el `code` no existe → `INSERT` (`resource`/`action` salen de `code.split(":")`, más la descripción de `PERM_DESCRIPTIONS`).
+   - Si existe → solo `UPDATE description` cuando cambió. `code`, `resource` y `action` no se tocan: son inmutables y el CHECK los ata.
+   - Reporta `creados=N actualizados=M sin_cambios=K`.
+2. **Huérfanos** (filas de `permissions` cuyo `code` ya no está en `Perm`):
+   - Se **listan, nunca se borran** (la FK `RESTRICT` y la regla de inmutabilidad piden una migración consciente).
+   - Salida: `HUÉRFANO orders:foo — usado por roles: Operador, Encargado` (un `JOIN` con `role_permissions`/`roles`).
+   - Exit code 0 con warning; con `--strict`, exit 1 (para CI).
+3. **Bootstrap "Operadores"/"Operador"** (solo si no existen, por `name` UNIQUE):
+   - Rol "Operador": si **no existe**, se crea con `description` y se le cargan `OPERATOR_ROLE_PERMS`. Si **ya existe**, **no se toca**: así se respetan los cambios hechos desde la UI. Se informa la diferencia contra `OPERATOR_ROLE_PERMS` (`faltan: …`, `sobran: …`).
+   - Grupo "Operadores": si no existe, se crea y se le vincula el rol "Operador" (`group_roles`). Si existe y no tiene el rol, **no** se re-vincula (mismo criterio: la UI manda).
+   - **Membresía inicial (P1):** solo al **crear** el grupo, se agregan todos los usuarios con `role = 'operator'` y `is_superuser = 0`. Es el único uso de la columna deprecada `role`. En corridas posteriores no se re-agrega a nadie, para no deshacer bajas hechas por un administrador.
+   - Auditoría: `created_by`/`updated_by` = `NULL` ("sistema").
+4. **Transacción:** todo en un `commit()`; ante cualquier excepción, `rollback()` y exit 1.
+5. **`--dry-run`:** ejecuta todo, imprime el reporte y hace `rollback()` en lugar de `commit()`.
+6. **Cómo se corre:**
+   ```bash
+   cd backend && PYTHONPATH=. .venv/bin/python -m seeds.seed_rbac --dry-run   # revisar
+   cd backend && PYTHONPATH=. .venv/bin/python -m seeds.seed_rbac             # aplicar
+   ```
+   Orden en un entorno nuevo: `flask db upgrade` → `seeds.seed_operator` → `seeds.seed_rbac`. Re-correrlo es seguro: idempotente.
+7. **Ajuste a `seeds/seed_operator.py`:** además de `role="admin"`, setear `is_superuser=True`. Si no, un entorno nuevo creado después de la migración queda sin superusuario, porque el backfill de la migración ya corrió.
+
+### Tests que se escriben en etapa 4 para el catálogo
+- Todo `Perm` cumple `^[a-z][a-z_]*:[a-z][a-z_]*$` y el nombre del miembro es `code.upper().replace(":", "_")`.
+- Todo `Perm` tiene descripción no vacía; todo `resource` tiene entrada en `RESOURCE_LABELS`, y no sobran labels.
+- No hay comodines (`*`) ni acciones fuera de `read/create/update/delete` + lista blanca de acciones de negocio (`quote`, `approve`, `produce`, `deliver`, `manage`).
+- `OPERATOR_ROLE_PERMS` no contiene `orders:delete`, `rbac:manage` ni `rbac:read`.
+- Seed: idempotencia (2 corridas = mismo estado), descripción actualizada, huérfano listado y no borrado, rol existente no modificado, membresía inicial solo de `role='operator'`.
+- Sincronía con `frontend/src/features/security/permissions/perms.js` (formato acordado en `api-contract.md` §7). Si el archivo no existe, el test **falla** (es un monorepo).
+
+### Preguntas de la etapa 3
+- **E3-1:** ¿`cash_movements` / `cash_categories` como recursos de `/api/cashbox/...`? Alternativa: `movements` / `categories` a secas (más pegado al path, pero ambiguo).
+- **E3-2:** ¿"Operador" sin `rbac:read`? Propuesta: sin. Los operadores no ven la sección Seguridad.
+- **E3-3:** ¿`approve` con seña y `deliver` con cobro alcanzan solos, o además exigen `cash_movements:create`? Propuesta: alcanzan solos.
+- **E3-4:** el "Operador" queda con `settings:update`, `printers:create/update` y `cash_categories:create/update`. Es lo que pide la regla ("todo menos …") y preserva el acceso actual, pero es configuración sensible: cambia costos y margen. ¿Lo dejamos así o los sacamos del rol ahora?
+- **E3-5:** ¿Nombre `orders:produce` para imprimiendo/listo? Alternativa: `orders:advance`.
+
+## Etapa 3 — catálogo y seed (HECHO)
+
+### Respuestas del usuario (E3-1 … E3-5)
+| # | Decisión |
+|---|---|
+| E3-1 | Recursos `cash_movements` y `cash_categories`. |
+| E3-2 | "Operador" sin `rbac:read`. |
+| E3-3 | `orders:approve` (seña) y `orders:deliver` (saldo) alcanzan solos; no exigen `cash_movements:create`. |
+| E3-4 | El Operador **no** cambia precios ni configuración: se le sacan `settings:update`, `printers:create`, `printers:update`, `cash_categories:create`, `cash_categories:update`. Elegir la impresora de cada pedido ya está cubierto por `orders:quote` + `printers:read`. La impresora por defecto del taller (`default_printer_id` en `PUT /api/settings`) queda bajo `settings:update`; no se crea un permiso nuevo. |
+| E3-5 | Se queda `orders:produce`. |
+
+### Catálogo final: 22 permisos (`backend/app/rbac/constants.py`)
+Es la tabla de "Etapa 3 — propuesta de catálogo", sin cambios de códigos. Solo se ajustaron dos descripciones:
+- `orders:quote`: "… (incluye elegir la impresora)".
+- `settings:update`: "… (costos, margen, moneda, impresora por defecto)".
+
+### Rol "Operador" final: 14 permisos, lista **explícita** (`OPERATOR_ROLE_PERMS`)
+`orders:read`, `orders:create`, `orders:update`, `orders:quote`, `orders:approve`, `orders:produce`, `orders:deliver`, `cash_movements:read`, `cash_movements:create`, `cash_categories:read`, `printers:read`, `settings:read`, `materials:read`, `filaments:read`.
+
+Se define como `frozenset` literal, no como "todo menos…": un permiso nuevo **no** se suma solo.
+
+### Verificación del flujo de presupuesto (E3-4)
+- `POST /api/orders/<id>/quote` → `calculate_quote()` guarda `quote_vars["printer_id"]` en `order_quotes.printer_id` (`backend/app/orders/services.py:238`).
+- Con `orders:quote` + `printers:read` (para listar impresoras), el operador elige la impresora del pedido. ✅
+- ⚠️ **Hallazgo:** el mismo `quote_vars` también acepta del cliente `kwh_cost`, `machine_power_watts`, `machine_cost_per_hour` y `profit_margin_pct` / `profit_multiplier`. Además, `quote/confirm` recibe `informed_price`. O sea, **quien tiene `orders:quote` fija el margen y el precio final de ese pedido**, aunque no pueda tocar la configuración global. Ver pregunta E3-6.
+
+### Implementación
+- `backend/app/rbac/constants.py`: contiene `Perm` (`StrEnum`, 22 miembros, propiedades `.resource` y `.action`), `PERM_DESCRIPTIONS`, `RESOURCE_LABELS`, los nombres y descripciones del rol y del grupo, y `OPERATOR_ROLE_PERMS`.
+- `backend/app/rbac/services.py`:
+  - `sync_permission_catalog()` y `bootstrap_operator_group()` hacen solo `flush`.
+  - `seed_rbac(dry_run=False)` envuelve ambas en una transacción: `commit`, o `rollback` si es dry-run o hay un error.
+  - Los reportes son dataclasses: `SeedReport`, `CatalogSyncReport` (con `OrphanPermission`) y `OperatorBootstrapReport`.
+- `backend/seeds/seed_rbac.py`: wrapper con `--dry-run` y `--strict` (exit 1 si hay huérfanos).
+- `backend/seeds/seed_operator.py`: el usuario id=1 queda con `is_superuser=True`, tanto al crearlo como al actualizarlo.
+- Tests (`backend/tests/rbac/`):
+  - `test_rbac_catalog.py` (9): lógica pura.
+  - `test_rbac_seed.py` (10): contra `delivery3d_test`.
+- **Diferido a etapa 4:** el test de sincronía con `perms.js`. Hoy el frontend tiene 3 miembros; agregarlo ahora deja la suite en rojo hasta que el frontend se actualice.
+- **Dry-run contra desarrollo:**
+  - Crearía 22 permisos, el rol "Operador" y el grupo "Operadores".
+  - No hay huérfanos.
+  - El grupo arranca sin miembros: la base solo tiene `operador` (admin/superuser).
+  - Verificado después del dry-run: `permissions=0`, `roles=0`, `groups=0`.
+
+### Preguntas de la etapa 3 (abiertas)
+- **E3-6:** con `orders:quote` el operador fija margen, costos de energía y máquina, y precio informado **por pedido**. ¿Es aceptable, porque presupuestar es su tarea? ¿O hay que forzar que esos valores salgan de `workshop_settings` cuando el actor no tiene `settings:update`? Esto último sería lógica en `calculate_quote`; se trataría en la etapa 5.
 
 ## Involved Files (real paths)
 Relevados para esta etapa (no se modifican en la etapa 1):
@@ -264,7 +434,7 @@ login_required            (existente: valida JWT, carga g.current_user)
 ---
 
 ## Constants / Enums / Magic IDs
-Se definen en la etapa 3 (`backend/app/rbac/constants.py`). Borrador **no vinculante** derivado de los endpoints actuales, solo para anticipar el formato:
+**Reemplazado** por "Etapa 3 — propuesta de catálogo" (arriba). Se conserva el borrador original de la etapa 1 como historial:
 
 | Recurso (prefijo) | Acciones candidatas | Endpoints |
 |---|---|---|
