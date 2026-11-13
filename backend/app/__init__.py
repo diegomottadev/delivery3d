@@ -71,6 +71,7 @@ def create_app(config_overrides: dict | None = None) -> Flask:
     from app.settings.routes import settings_bp
     from app.cashbox.routes import cashbox_bp
     from app.auth.routes import auth_bp
+    from app.rbac.routes import rbac_bp
 
     app.register_blueprint(orders_bp)
     app.register_blueprint(materials_bp)
@@ -79,6 +80,7 @@ def create_app(config_overrides: dict | None = None) -> Flask:
     app.register_blueprint(settings_bp)
     app.register_blueprint(cashbox_bp)
     app.register_blueprint(auth_bp)
+    app.register_blueprint(rbac_bp)
 
     @app.after_request
     def apply_security_headers(response):
@@ -100,6 +102,7 @@ def create_app(config_overrides: dict | None = None) -> Flask:
                 "/api/printers",
                 "/api/settings",
                 "/api/cashbox",
+                "/api/rbac",
             ],
             "frontend_url": "http://localhost:3000",
         }, 200

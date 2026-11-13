@@ -1,7 +1,7 @@
 # Design: rbac-access-control
 
 > **Estado:** Etapas 1 y 2 aprobadas; migración `44a4db68ccde` aplicada en desarrollo. Etapa 3 implementada (catálogo + seed); seed **no aplicado** a desarrollo (solo `--dry-run`).
-> Contrato de API: fuente única en `api-contract.md` (borrador; se cierra en etapa 6).
+> Contrato de API: fuente única en `api-contract.md` (**cerrado** en etapa 6). Etapas 4–6 implementadas (ver secciones).
 
 ## Respuestas del usuario (etapa 1)
 
@@ -288,6 +288,37 @@ Con `settings:update`, el body se respeta completo.
 - **`backend/tests/rbac/test_rbac_workshop_routes.py`** (nuevo, 105 casos):
   - Por cada uno de los 30 endpoints: sin permiso → 403 FORBIDDEN, con exactamente su permiso → ni 401 ni 403, y sin token → 401.
   - Además verifica que la lista de endpoints cubre los 20 permisos de negocio, qué puede y qué no puede hacer el rol "Operador" sembrado, y que `/api/auth/me` y `/me/permissions` solo exigen sesión.
+
+## Etapa 6 — endpoints de administración (HECHO)
+
+### Código
+- **`backend/app/rbac/routes.py`** (nuevo): blueprint `rbac_bp` (`/api/rbac`), registrado en `create_app` (y listado en `GET /`). 33 endpoints: lecturas con `permission_required(Perm.RBAC_READ)`, escrituras con `permission_required(Perm.RBAC_MANAGE)`. Sin ORM: cada route hace `ensure` del recurso del path (404) → valida el body con `schemas.py` (422) → llama al service. `errorhandler` del blueprint traduce las excepciones de dominio a `{"error", "code"}` (y `InvalidJsonBody` a 422 `VALIDATION_ERROR` solo dentro de `/api/rbac`; el handler global no cambia).
+- **`backend/app/rbac/schemas.py`** (nuevo): validación a mano (`validate_name_description`, `validate_user_ref`/`group_ref`/`role_ref`, `validate_direct_role`, `validate_permission_codes`, `validate_query`) y serializadores (`group_detail`, `role_detail`, `user_detail`, `direct_role_out`, …).
+- **`backend/app/rbac/services.py`** (sección "Etapa 6"): excepciones de dominio (`RbacNotFoundError`, `NameTakenError`, `AlreadyMemberError`, `AlreadyAssignedError`, `RoleInUseError`, `SelfAssignmentError`, `SelfLockoutError`, `UnknownPermissionError`), CRUD, membresías, roles directos, acceso efectivo, catálogo e impacto. Commit/rollback solo acá; `IntegrityError` por carrera en un UNIQUE → el mismo conflicto 409.
+
+### Decisiones
+- **Un solo cálculo para impacto y `SELF_LOCKOUT`.** `AccessChange` describe el cambio (usuarios afectados, qué *grants* —rol por grupo o directo— se pierden y qué roles cambian de permisos) y `_lost_permissions` lo simula en memoria (≤ 3 consultas, sin escribir). Los endpoints de impacto devuelven el resultado; las mutaciones llaman a `_ensure_no_self_lockout` con el **mismo** `AccessChange` antes de escribir. Así `removes_own_rbac_manage = true` ⇔ la mutación da 409 `SELF_LOCKOUT`, y un 409 nunca deja cambios (no hace falta rollback). Descartado: aplicar el cambio, `flush`, recalcular y `rollback` (más simple de razonar pero con escrituras en un GET y sin orden garantizado respecto de los conflictos).
+- **`SELF_ASSIGNMENT`** se evalúa también antes de escribir y antes de los conflictos. En `PUT /roles/{id}/permissions`: el actor tiene el rol (directo o por grupo) y el set nuevo agrega algún code. Quitar está permitido (sujeto a `SELF_LOCKOUT`). Superusuario exento de ambas reglas.
+- **`DELETE /roles/{id}`** no evalúa `SELF_LOCKOUT`: un rol sin asignaciones no le quita nada a nadie, y uno con asignaciones da `ROLE_IN_USE`.
+- **Validación del catálogo:** un code es válido si está en `Perm` y en la tabla `permissions` (si el seed no corrió, se rechaza con `UNKNOWN_PERMISSION` en vez de fallar con 500).
+- **`PUT` de grupos/roles = reemplazo completo** (sin `description` → `null`).
+- **Orden de 404:** primero los ids del path (antes de validar el body, como pide el contrato), después los ids del body (después de validarlo).
+- **Auditoría:** `created_by`/`updated_by`/`assigned_by` = `g.current_user`; `PUT /roles/{id}/permissions` además actualiza `roles.updated_by`/`updated_at`. Cada mutación se loguea en `delivery3d.audit` (`rbac_group_created`, `rbac_member_added`, `rbac_role_permissions_set added=… removed=…`, etc.).
+- **Sin migración:** las tablas y constraints de la etapa 2 alcanzan.
+
+### Contrato
+`api-contract.md` queda **cerrado**. §6 (impacto) se fijó con el shape que había propuesto el frontend, sin cambios de claves; §6.bis documenta los detalles que el contrato dejaba abiertos (orden fino de chequeos, validaciones, ordenamientos, `PUT` como reemplazo). No se cambió nada que el frontend ya consumiera. A pedido del frontend, dos ajustes aditivos/de texto: `affected_users[].lost_permissions_detail` (`{code, description}`, paralelo a `lost_permissions`) y una aclaración en §2: `/access` no lista grupos sin roles; la membresía se lee de `GroupDetail.members` o `GET /users/{id}/groups`.
+
+### Tests (`backend/tests/rbac/`)
+| Archivo | Qué cubre |
+|---|---|
+| `admin_support.py` | Helpers: `setup_admin` (admin **no** superusuario con `rbac:read` + `rbac:manage` vía grupo "Seguridad"), `reader`, `count`/`fetch`, `assert_error`. |
+| `test_rbac_admin_authz.py` | Los 33 endpoints: sin token 401, sin permisos 403 `FORBIDDEN` (antes que 404/422); lecturas con solo `rbac:read`; escrituras exigen `rbac:manage`. |
+| `test_rbac_admin_groups.py` | CRUD de grupos, miembros y roles del grupo; auditoría; `NAME_TAKEN` sin mayúsculas; cascada; `SELF_ASSIGNMENT` (incluido antes de `ALREADY_MEMBER`), `SELF_LOCKOUT`, superusuario exento. |
+| `test_rbac_admin_roles.py` | CRUD de roles, `ROLE_IN_USE`, `PUT …/permissions` (reemplazo, duplicados, `[]`, `UNKNOWN_PERMISSION`, `SELF_ASSIGNMENT` por grupo y directo, `SELF_LOCKOUT`). |
+| `test_rbac_admin_users.py` | Listado con conteos y `q` (escapa `%`/`_`), detalle sin hash, grupos del usuario, roles directos (`reason`, `assigned_by` del actor), `/access` (orígenes, superusuario, propio usuario con solo `rbac:read`), `is_superuser` inmodificable. |
+| `test_rbac_admin_catalog.py` | `GET /permissions` agrupado en el orden de `RESOURCE_LABELS`, roles por permiso, sin métodos de escritura. |
+| `test_rbac_admin_impact.py` | Los 6 endpoints de impacto: pérdidas contemplando otras vías, superusuario sin pérdidas, `removes_own_rbac_manage` coherente con `SELF_LOCKOUT`, sin efectos, 404 de asignación inexistente, solo `rbac:read`. |
 
 ## Involved Files (real paths)
 Relevados para esta etapa (no se modifican en la etapa 1):

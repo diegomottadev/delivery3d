@@ -74,8 +74,7 @@ export const setRolePermissions = (roleId, permissions) => put(`${RBAC}/roles/${
 // §5 Catálogo (solo lectura)
 export const listPermissionCatalog = () => get(`${RBAC}/permissions`);
 
-// §6 Impacto previo.
-// TODO(rbac etapa 6): contrato en BORRADOR; confirmar paths y shape cuando el backend los cierre.
+// §6 Impacto previo (cerrado en la etapa 6): solo lectura, mismo shape para todos.
 export const getGroupRoleRemovalImpact = (groupId, roleId) => get(`${RBAC}/groups/${toId(groupId)}/roles/${toId(roleId)}/removal-impact`);
 export const getGroupMemberRemovalImpact = (groupId, userId) =>
     get(`${RBAC}/groups/${toId(groupId)}/members/${toId(userId)}/removal-impact`);

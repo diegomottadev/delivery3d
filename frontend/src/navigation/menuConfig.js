@@ -29,3 +29,13 @@ export const MENU_CONFIG = Object.freeze([
         ],
     },
 ]);
+
+/**
+ * Rutas de detalle (no van al menú): breadcrumb "Listado / Detalle". El guard es el del listado.
+ * Entrada: { path (patrón de react-router), parent, label, backLabel, backPath, perm }.
+ */
+export const DETAIL_ROUTES = Object.freeze([
+    { path: '/seguridad/usuarios/:userId', parent: 'Seguridad', label: 'Detalle de usuario', backLabel: 'Usuarios', backPath: '/seguridad/usuarios', perm: PERM.RBAC_READ },
+    { path: '/seguridad/grupos/:groupId', parent: 'Seguridad', label: 'Detalle de grupo', backLabel: 'Grupos', backPath: '/seguridad/grupos', perm: PERM.RBAC_READ },
+    { path: '/seguridad/roles/:roleId', parent: 'Seguridad', label: 'Detalle de rol', backLabel: 'Roles', backPath: '/seguridad/roles', perm: PERM.RBAC_READ },
+]);

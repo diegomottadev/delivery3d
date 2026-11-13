@@ -45,6 +45,24 @@ describe('<ConfirmImpactDialog>', () => {
         expect(screen.queryByText('beto')).not.toBeInTheDocument();
     });
 
+    test('usa la descripción de lost_permissions_detail cuando el backend la manda', () => {
+        renderDialog({
+            impact: {
+                ...IMPACT,
+                affected_users: [
+                    {
+                        id: 7,
+                        username: 'ana',
+                        lost_permissions: ['orders:update'],
+                        lost_permissions_detail: [{ code: 'orders:update', description: 'Editar pedidos y cambiar su estado' }],
+                    },
+                ],
+            },
+        });
+        expect(screen.getByText(/Editar pedidos y cambiar su estado/)).toBeInTheDocument();
+        expect(screen.queryByText(/orders:update/)).not.toBeInTheDocument();
+    });
+
     test('confirmar llama a onConfirm; cancelar llama a onHide', () => {
         const { onConfirm, onHide } = renderDialog();
         fireEvent.click(screen.getByRole('button', { name: 'Quitar rol' }));

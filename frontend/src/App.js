@@ -14,14 +14,19 @@ import CashboxView from './features/cashbox/CashboxView';
 import CashboxSettingsView from './features/cashbox/CashboxSettingsView';
 import SplitDashboardView from './features/dashboard/SplitDashboardView';
 import AccessDeniedView from './features/security/AccessDeniedView';
-import SecurityPlaceholderView from './features/security/SecurityPlaceholderView';
+import UsersListView from './features/security/users/UsersListView';
+import UserDetailView from './features/security/users/UserDetailView';
+import GroupsListView from './features/security/groups/GroupsListView';
+import GroupDetailView from './features/security/groups/GroupDetailView';
+import RolesListView from './features/security/roles/RolesListView';
+import RoleDetailView from './features/security/roles/RoleDetailView';
 import PermissionsCatalogView from './features/security/permissions-catalog/PermissionsCatalogView';
 import { usePermissions } from './features/security/permissions/PermissionsContext';
 import { RequirePermission, ACCESS_DENIED_PATH } from './features/security/permissions/RequirePermission';
 import { PermissionsLoadError } from './features/security/permissions/PermissionsLoadError';
 import { PERM } from './features/security/permissions/perms';
-import { MENU_CONFIG } from './navigation/menuConfig';
-import { buildMenu, buildBreadcrumb, guardFor } from './navigation/buildMenu';
+import { MENU_CONFIG, DETAIL_ROUTES } from './navigation/menuConfig';
+import { buildMenu, buildBreadcrumb, guardFor, findBreadcrumbMeta } from './navigation/buildMenu';
 
 
 import PrimeReact from 'primereact/api';
@@ -59,7 +64,7 @@ const App = () => {
     const { can, status: permissionsStatus } = usePermissions();
 
     const breadcrumb = useMemo(
-        () => [...buildBreadcrumb(MENU_CONFIG), { path: ACCESS_DENIED_PATH, parent: 'Delivery3D', label: 'Acceso denegado' }],
+        () => [...buildBreadcrumb(MENU_CONFIG), ...DETAIL_ROUTES, { path: ACCESS_DENIED_PATH, parent: 'Delivery3D', label: 'Acceso denegado' }],
         []
     );
 
@@ -70,9 +75,7 @@ const App = () => {
         copyTooltipRef && copyTooltipRef.current && copyTooltipRef.current.updateTargetEvents();
     }, [location]);
 
-    let meta = breadcrumb.find((obj) => {
-        return obj.path === location.pathname || obj.path === location.pathname.replace(/\/$/, '');
-    }) || { path: location.pathname, parent: 'Delivery3D', label: 'Taller 3D' };
+    const meta = findBreadcrumbMeta(breadcrumb, location.pathname) || { path: location.pathname, parent: 'Delivery3D', label: 'Taller 3D' };
 
     const onInputStyleChange = (inputStyle) => {
         setInputStyle(inputStyle);
@@ -306,18 +309,12 @@ const App = () => {
                             element={<RequirePermission {...guardFor(MENU_CONFIG, '/cashbox/settings')}><CashboxSettingsView /></RequirePermission>}
                         />
                         <Route path="/settings" element={<RequirePermission {...guardFor(MENU_CONFIG, '/settings')}><WorkshopSettingsView /></RequirePermission>} />
-                        <Route
-                            path="/seguridad/usuarios"
-                            element={<RequirePermission perm={PERM.RBAC_READ}><SecurityPlaceholderView title="Usuarios" /></RequirePermission>}
-                        />
-                        <Route
-                            path="/seguridad/grupos"
-                            element={<RequirePermission perm={PERM.RBAC_READ}><SecurityPlaceholderView title="Grupos" /></RequirePermission>}
-                        />
-                        <Route
-                            path="/seguridad/roles"
-                            element={<RequirePermission perm={PERM.RBAC_READ}><SecurityPlaceholderView title="Roles" /></RequirePermission>}
-                        />
+                        <Route path="/seguridad/usuarios" element={<RequirePermission {...guardFor(MENU_CONFIG, '/seguridad/usuarios')}><UsersListView /></RequirePermission>} />
+                        <Route path="/seguridad/grupos" element={<RequirePermission {...guardFor(MENU_CONFIG, '/seguridad/grupos')}><GroupsListView /></RequirePermission>} />
+                        <Route path="/seguridad/roles" element={<RequirePermission {...guardFor(MENU_CONFIG, '/seguridad/roles')}><RolesListView /></RequirePermission>} />
+                        <Route path="/seguridad/usuarios/:userId" element={<RequirePermission perm={PERM.RBAC_READ}><UserDetailView /></RequirePermission>} />
+                        <Route path="/seguridad/grupos/:groupId" element={<RequirePermission perm={PERM.RBAC_READ}><GroupDetailView /></RequirePermission>} />
+                        <Route path="/seguridad/roles/:roleId" element={<RequirePermission perm={PERM.RBAC_READ}><RoleDetailView /></RequirePermission>} />
                         <Route
                             path="/seguridad/permisos"
                             element={<RequirePermission perm={PERM.RBAC_READ}><PermissionsCatalogView /></RequirePermission>}

@@ -33,6 +33,26 @@ El sistema DEBE informar al usuario autenticado sus permisos efectivos (`GET /ap
 | EX-03 | Happy Path | Superusuario | Activo | Consulta sus permisos | `is_superuser: true` y los 22 permisos del catálogo |
 | EX-04 | Error Case | Sin sesión | — | Consulta sus permisos | 401 |
 
+### Requirement: REQ-AUTH-06 Administración de accesos
+El sistema DEBE permitir, a quien tenga `rbac:manage`, administrar grupos, roles, los permisos de cada rol, las membresías y los roles directos (con motivo obligatorio), y a quien tenga `rbac:read`, consultar todo eso, el catálogo de permisos, el acceso efectivo de un usuario con el origen de cada rol, y el impacto de quitar un acceso antes de hacerlo.
+- Nadie puede darse roles ni permisos a sí mismo, ni directa ni indirectamente (sumarse a un grupo, sumar un rol a un grupo propio, sumar permisos a un rol propio). Los superusuarios están exentos.
+- Nadie (salvo un superusuario) puede quitarse a sí mismo `rbac:manage`.
+- Un rol asignado a algún grupo o usuario no se puede borrar.
+- `is_superuser` no se puede cambiar desde la API.
+- Quién hizo cada alta o cambio queda registrado con el usuario autenticado, nunca con un dato enviado en la solicitud.
+
+| ID | Type | Input | Initial State | Trigger / Action | Expected Observable Result |
+|---|---|---|---|---|---|
+| EX-01 | Happy Path | Admin con `rbac:manage` | Grupo "Taller" sin miembros | Agrega a "ana" | 201 con el grupo y "ana" entre los miembros; la membresía registra al admin como autor |
+| EX-02 | Error Case | Admin miembro de "Seguridad" | — | Agrega el rol "Borrador" al grupo "Seguridad" | 409 `SELF_ASSIGNMENT`; el grupo no cambia |
+| EX-03 | Error Case | Admin con `rbac:manage` solo por "Seguridad" | — | Se quita a sí mismo de "Seguridad" | 409 `SELF_LOCKOUT`; sigue siendo miembro |
+| EX-04 | Happy Path | Admin | "ana" y "beto" en "Taller" (rol con `orders:read` y `printers:read`); "beto" tiene `orders:read` también directo | Consulta el impacto de quitar el rol a "Taller" | 2 afectados; "ana" pierde ambos permisos, "beto" solo `printers:read` |
+| EX-05 | Error Case | Admin | Rol "Operador" asignado al grupo "Operadores" | Borra el rol | 409 `ROLE_IN_USE`; el rol sigue existiendo |
+| EX-06 | Error Case | Admin | — | Asigna un rol directo a "ana" con motivo vacío | 422 `VALIDATION_ERROR` con error en `reason` |
+| EX-07 | Happy Path | Admin | "ana" en "Operadores" (rol "Operador") y con rol directo "Auditor" | Consulta el acceso de "ana" | "Operador" vía grupo "Operadores" y "Auditor" directo, con motivo, autor y fecha |
+| EX-08 | Error Case | Usuario con solo `rbac:read` | — | Crea un grupo | 403 `FORBIDDEN` |
+| EX-09 | Boundary | Superusuario | — | Se asigna un rol directo a sí mismo | 201 (exento) |
+
 ### Requirement: REQ-ORD-QUOTE-LOCK El presupuesto usa los costos y el margen del taller si quien presupuesta no administra la configuración
 Si quien presupuesta no tiene el permiso `settings:update`, el sistema DEBE usar siempre los valores del taller e ignorar los que vengan en la solicitud:
 - de la configuración: costo del kWh, margen, merma/purga y tarifa por hora de mano de obra;

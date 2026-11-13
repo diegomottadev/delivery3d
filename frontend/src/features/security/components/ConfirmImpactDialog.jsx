@@ -71,7 +71,10 @@ export const ConfirmImpactDialog = ({
                                     <li key={u.id}>
                                         <strong>{u.username}</strong>
                                         {': '}
-                                        {u.lost_permissions.map(describePermission).join(', ')}
+                                        {(u.lost_permissions_detail?.length === u.lost_permissions.length
+                                            ? u.lost_permissions_detail.map((p) => p.description || describePermission(p.code))
+                                            : u.lost_permissions.map(describePermission)
+                                        ).join(', ')}
                                     </li>
                                 ))}
                             </ul>

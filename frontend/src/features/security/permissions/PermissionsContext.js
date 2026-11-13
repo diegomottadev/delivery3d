@@ -89,16 +89,16 @@ export const PermissionsProvider = ({ children }) => {
 const noopRefresh = () => Promise.resolve();
 
 /**
- * Provider con permisos fijos, sin API (tests de vistas y prototipos).
+ * Provider con permisos fijos, sin API (tests de vistas y prototipos). `refresh` es un noop salvo que se pase uno (espía en tests).
  * NO usar en la app: los permisos reales salen de /me/permissions vía PermissionsProvider.
  */
-export const StaticPermissionsProvider = ({ permissions = [], isSuperuser = false, userId = null, status = 'ready', children }) => {
+export const StaticPermissionsProvider = ({ permissions = [], isSuperuser = false, userId = null, status = 'ready', refresh = noopRefresh, children }) => {
     const state = useMemo(
         () => ({ status, userId, isSuperuser, permissions: new Set(permissions) }),
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [status, userId, isSuperuser, permissions.join('|')]
     );
-    const value = usePermissionsValue(state, noopRefresh);
+    const value = usePermissionsValue(state, refresh);
     return <PermissionsContext.Provider value={value}>{children}</PermissionsContext.Provider>;
 };
 

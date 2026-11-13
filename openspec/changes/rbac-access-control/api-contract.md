@@ -1,7 +1,7 @@
 # API contract — rbac-access-control
 
 > **Fuente única del contrato de API** entre backend y frontend para este change.
-> Estado: **BORRADOR** (actualizado en etapa 3 con Q1–Q4 respondidas). Se cierra en la etapa 6. Lo marcado **🔒 FIJO** ya no cambia y el frontend puede construir sobre eso.
+> Estado: **CERRADO** en la etapa 6 (implementado en `backend/app/rbac/routes.py`). Todo el documento es contrato fijo; §6 y §6.bis se cerraron en la etapa 6 sin cambiar shapes ya fijados.
 > Parte de `frontend-plan.md` §10, con las decisiones aprobadas por el usuario (ver `design.md` → "Respuestas del usuario").
 
 ---
@@ -110,7 +110,8 @@ Responde **409** `{"error": "No podés asignarte roles ni permisos a vos mismo",
 `DELETE /api/rbac/users/{user_id}/roles/{role_id}` → `204` · 404 · 409 `SELF_LOCKOUT`
 
 ### Acceso efectivo
-`GET /api/rbac/users/{user_id}/access` (**no** `/effective-access`). Requiere `rbac:read`, y **también vale para el propio usuario** (`user_id` = actor): las lecturas no tienen restricción de "sí mismo". El frontend lo usa con su propio id para deshabilitar las acciones que darían `SELF_ASSIGNMENT` indirecto: grupos de los que es miembro (`roles[].sources[].group`) y roles que tiene (`roles[].role`). 🔒
+`GET /api/rbac/users/{user_id}/access` (**no** `/effective-access`). Requiere `rbac:read`, y **también vale para el propio usuario** (`user_id` = actor): las lecturas no tienen restricción de "sí mismo". El frontend lo usa con su propio id para saber qué **roles** tiene (`roles[].role`) y deshabilitar `PUT /roles/{id}/permissions` que sumen permisos (`SELF_ASSIGNMENT`). 🔒
+- ⚠️ `/access` **no** sirve para saber de qué grupos es miembro un usuario: `roles[].sources[].group` solo muestra grupos que le dan algún rol (un grupo sin roles no aparece). Para la membresía: `GroupDetail.members` (o `GET /groups/{id}/members`) para saber si el actor es miembro de un grupo (y deshabilitar `POST /groups/{id}/roles`), o `GET /users/{user_id}/groups` para la lista completa de grupos de un usuario.
 ```json
 200
 {
@@ -203,26 +204,60 @@ Responde **409** `{"error": "No podés asignarte roles ni permisos a vos mismo",
 
 ---
 
-## 6. Endpoints de impacto (entran en etapa 6 — Q4 aprobada; shape a cerrar en etapa 6)
+## 6. Endpoints de impacto — 🔒 FIJO (etapa 6)
 
-Propuestos por el frontend para `ConfirmImpactDialog`; solo lectura (`rbac:read`), sin efectos:
+Solo lectura (`rbac:read`), **sin efectos**. Sirven para `ConfirmImpactDialog`: antes de quitar algo, muestran a quiénes afecta y qué permisos pierden. Son solo UX: la mutación correspondiente vuelve a chequear y responde 409 `SELF_LOCKOUT` aunque el frontend no haya consultado el impacto.
 
-- `GET /api/rbac/groups/{id}/roles/{role_id}/removal-impact`
-- `GET /api/rbac/groups/{id}/members/{user_id}/removal-impact`
-- `GET /api/rbac/users/{user_id}/roles/{role_id}/removal-impact`
-- `GET /api/rbac/groups/{id}/removal-impact`, `GET /api/rbac/roles/{id}/removal-impact`
-- `POST /api/rbac/roles/{id}/permissions/impact` `{ "permissions": [...] }`
+| Endpoint | Simula | Usuarios afectados |
+|---|---|---|
+| `GET /api/rbac/groups/{id}/roles/{role_id}/removal-impact` | `DELETE /groups/{id}/roles/{role_id}` | miembros del grupo |
+| `GET /api/rbac/groups/{id}/members/{user_id}/removal-impact` | `DELETE /groups/{id}/members/{user_id}` (= `DELETE /users/{user_id}/groups/{id}`) | ese usuario |
+| `GET /api/rbac/users/{user_id}/roles/{role_id}/removal-impact` | `DELETE /users/{user_id}/roles/{role_id}` | ese usuario |
+| `GET /api/rbac/groups/{id}/removal-impact` | `DELETE /groups/{id}` | miembros del grupo |
+| `GET /api/rbac/roles/{id}/removal-impact` | quitar el rol de **todos** lados | quienes tienen el rol (por cualquier grupo o directo) |
+| `POST /api/rbac/roles/{id}/permissions/impact` `{ "permissions": [...] }` | `PUT /roles/{id}/permissions` con ese set | quienes tienen el rol |
 
 ```json
 200
-{ "affected_users_count": 4,
+{ "affected_users_count": 3,
   "users_losing_permissions_count": 2,
-  "affected_users": [ { "id": 7, "username": "ana", "lost_permissions": ["orders:update"] } ],
+  "affected_users": [
+    { "id": 7, "username": "ana",
+      "lost_permissions": ["orders:read", "printers:read"],
+      "lost_permissions_detail": [
+        { "code": "orders:read",   "description": "Ver pedidos, su detalle e historial de estados" },
+        { "code": "printers:read", "description": "Ver las impresoras del taller" } ] },
+    { "id": 8, "username": "beto",
+      "lost_permissions": ["printers:read"],
+      "lost_permissions_detail": [ { "code": "printers:read", "description": "Ver las impresoras del taller" } ] },
+    { "id": 9, "username": "carla", "lost_permissions": [], "lost_permissions_detail": [] } ],
   "removes_own_rbac_manage": false }
 ```
-El backend rechaza igual con 409 `SELF_LOCKOUT`; el impacto es solo UX.
+- `affected_users`: ordenado por `username`; incluye a todos los afectados aunque no pierdan nada.
+- `lost_permissions`: permisos efectivos que el usuario **deja de tener**, ordenados alfabéticamente. Contempla las otras vías: si el permiso le llega también por otro grupo o por un rol directo, no aparece. Un superusuario siempre tiene `[]`.
+- `lost_permissions_detail` (**aditivo**, agregado en el cierre a pedido del frontend): los mismos permisos de `lost_permissions`, en el mismo orden, como `{code, description}` (descripción de la tabla `permissions`). `lost_permissions` no cambia.
+- `users_losing_permissions_count`: afectados con `lost_permissions` no vacío.
+- `removes_own_rbac_manage`: `true` si el actor (no superusuario) está entre los afectados y pierde `rbac:manage`. Es exactamente la condición con la que la mutación responde 409 `SELF_LOCKOUT` (mismo cálculo en el backend).
+- **`roles/{id}/removal-impact`** describe qué pasaría si el rol se quitara de todos lados; `DELETE /roles/{id}` igual exige que no esté asignado (409 `ROLE_IN_USE`), así que en la práctica el frontend lo usa para explicar por qué no se puede borrar y a quiénes afectaría desasignarlo.
+- `POST …/permissions/impact`: mismo body y validación que `PUT /roles/{id}/permissions` (422 `VALIDATION_ERROR` si `permissions` no es lista de strings, 422 `UNKNOWN_PERMISSION` con `errors.permissions`). No informa permisos ganados ni `SELF_ASSIGNMENT` (para eso, `GET /users/{id}/access` del propio usuario).
+- Errores: 401 · 403 `FORBIDDEN` · 404 `NOT_FOUND` si no existe el grupo/rol/usuario **o la asignación** (ej. el rol no está en el grupo; el usuario no es miembro) — mismo 404 que daría el `DELETE`.
 
 ---
+
+## 6.bis Detalles cerrados en la etapa 6 (no cambian shapes ya fijados)
+
+- **Orden de chequeo**, completo: `401` → `403 FORBIDDEN` → `404` de los ids del **path** → `422 VALIDATION_ERROR` / `UNKNOWN_PERMISSION` del body → `404` de los ids del **body** (`user_id`, `group_id`, `role_id` válidos pero inexistentes) → `409 SELF_ASSIGNMENT` / `SELF_LOCKOUT` → `409` conflictos (`ALREADY_*`, `NAME_TAKEN`, `ROLE_IN_USE`). Ej.: el actor agregándose a un grupo del que ya es miembro → `SELF_ASSIGNMENT`, no `ALREADY_MEMBER`.
+- **Rollback de `SELF_*`:** se evalúan antes de escribir; un 409 no deja ningún cambio.
+- **`SELF_ASSIGNMENT` en `POST /groups/{id}/members` y `POST /users/{id}/groups`**: aplica aunque el grupo no tenga roles hoy (luego podría tenerlos).
+- **`DELETE /roles/{id}`** nunca responde `SELF_LOCKOUT`: si el rol está asignado es `ROLE_IN_USE`, y si no lo está, borrarlo no le quita nada a nadie.
+- **422:** `{"error": "Datos inválidos", "code": "VALIDATION_ERROR", "errors": {"campo": "msg"}}`. Un body que no es objeto JSON → 422 `VALIDATION_ERROR` con `errors: {}`. Ids del body: entero positivo (`"7"`, `true`, `null` → 422).
+- **Nombres** (`groups`, `roles`): obligatorios, `trim`, máx. 100; `NAME_TAKEN` sin distinguir mayúsculas (collation de la base). `description`: string o `null`, `trim`, máx. 255, vacío → `null`. **`PUT` es reemplazo completo**: sin `description` queda `null`.
+- **`?q=`** (users/groups/roles): substring sin distinguir mayúsculas; `%` y `_` se buscan literales; máx. 100 caracteres (422 con `errors.q`). Listados ordenados por `username` / `name`.
+- **`PUT /roles/{id}/permissions`**: codes duplicados se ignoran; `[]` vale (rol sin permisos). Un code es válido si está en `Perm` **y** en la tabla `permissions` (catálogo sincronizado por el seed). `UNKNOWN_PERMISSION` trae `errors.permissions` con los codes rechazados.
+- **`GET /users/{id}/access`**: `roles` ordenado por nombre del rol; en cada rol, `sources` primero los grupos (por nombre) y después el directo. `permissions` ordenado por `code`; sus `sources` siguen el mismo orden (grupo por nombre, luego rol; después directos por nombre de rol). Con superusuario, `permissions` sale del enum `Perm` (descripción de `PERM_DESCRIPTIONS`).
+- **`GET /users/{id}/roles`**: ordenado por nombre del rol. `POST` devuelve el mismo objeto; `reason` se guarda con `trim`.
+- **Auditoría**: `created_by`/`updated_by`/`assigned_by` = usuario autenticado; esos campos (y `is_superuser`) del body se ignoran. Cada mutación deja una línea en el logger `delivery3d.audit` con `actor_id`.
+- `is_superuser`: no hay `PUT`/`PATCH /users/{id}` (405).
 
 ## 7. Sincronía `perms.js` ↔ `Perm` (etapa 3/4)
 

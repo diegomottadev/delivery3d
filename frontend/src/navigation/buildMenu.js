@@ -1,3 +1,5 @@
+import { matchPath } from 'react-router-dom';
+
 // Un ítem es visible si no declara permiso, si `can(perm)` o si tiene alguno de `anyOf`.
 const isAllowed = (item, can) => {
     if (item.anyOf) return item.anyOf.some((perm) => can(perm));
@@ -42,4 +44,17 @@ export const guardFor = (config, path) => {
         throw new Error(`guardFor: la ruta "${path}" no tiene permiso declarado en MENU_CONFIG`);
     }
     return item.anyOf ? { anyOf: item.anyOf } : { perm: item.perm };
+};
+
+/**
+ * Entrada de breadcrumb para `pathname`: primero coincidencia exacta (ignora la barra final),
+ * después patrones con params (rutas de detalle). null si no hay ninguna.
+ */
+export const findBreadcrumbMeta = (entries, pathname) => {
+    const clean = pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname;
+    return (
+        entries.find((e) => e.path === clean) ||
+        entries.find((e) => e.path.includes(':') && matchPath({ path: e.path, end: true }, clean)) ||
+        null
+    );
 };

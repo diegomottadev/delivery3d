@@ -19,6 +19,16 @@ const AppBreadcrumb = (props) => {
                     <li>/</li>
                     {location.pathname === '/' ? (
                         <li>Dashboard</li>
+                    ) : props.meta?.backPath ? (
+                        <>
+                            <li>
+                                <button type="button" className="p-link" onClick={() => navigate(props.meta.backPath)}>
+                                    {props.meta.backLabel}
+                                </button>
+                            </li>
+                            <li>/</li>
+                            <li>{label}</li>
+                        </>
                     ) : (
                         <li>
                             <button className="p-link">{label}</button>

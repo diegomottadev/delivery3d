@@ -54,9 +54,9 @@ export const OPERATOR_PERMISSIONS = Object.freeze([
 ]);
 
 /** render() con permisos fijos (sin AuthProvider ni API). */
-export const renderWithPermissions = (ui, { permissions = [], isSuperuser = false, userId = 1, ...options } = {}) => {
+export const renderWithPermissions = (ui, { permissions = [], isSuperuser = false, userId = 1, refresh, ...options } = {}) => {
     const Wrapper = ({ children }) => (
-        <StaticPermissionsProvider permissions={permissions} isSuperuser={isSuperuser} userId={userId}>
+        <StaticPermissionsProvider permissions={permissions} isSuperuser={isSuperuser} userId={userId} refresh={refresh}>
             {children}
         </StaticPermissionsProvider>
     );

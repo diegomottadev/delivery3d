@@ -1,6 +1,6 @@
-import { buildMenu, buildBreadcrumb, guardFor } from './buildMenu';
+import { buildMenu, buildBreadcrumb, guardFor, findBreadcrumbMeta } from './buildMenu';
 import { OPERATOR_PERMISSIONS } from '../features/security/permissions/permissionsTestUtils';
-import { MENU_CONFIG } from './menuConfig';
+import { MENU_CONFIG, DETAIL_ROUTES } from './menuConfig';
 import { PERM } from '../features/security/permissions/perms';
 
 const CONFIG = [
@@ -117,5 +117,26 @@ describe('buildBreadcrumb', () => {
         expect(crumbs.every((c) => !('perm' in c) && !('anyOf' in c))).toBe(true);
         expect(crumbs).toContainEqual({ path: '/', parent: 'Delivery3D', label: 'Tablero Operativo y Finanzas' });
         expect(crumbs).toContainEqual({ path: '/seguridad/usuarios', parent: 'Seguridad', label: 'Usuarios' });
+    });
+});
+
+describe('findBreadcrumbMeta (rutas de detalle)', () => {
+    const entries = [...buildBreadcrumb(MENU_CONFIG), ...DETAIL_ROUTES];
+
+    test('rutas exactas del menú (con o sin barra final)', () => {
+        expect(findBreadcrumbMeta(entries, '/seguridad/usuarios')).toMatchObject({ label: 'Usuarios', parent: 'Seguridad' });
+        expect(findBreadcrumbMeta(entries, '/seguridad/grupos/')).toMatchObject({ label: 'Grupos' });
+    });
+
+    test.each([
+        ['/seguridad/usuarios/7', 'Detalle de usuario', 'Usuarios', '/seguridad/usuarios'],
+        ['/seguridad/grupos/3', 'Detalle de grupo', 'Grupos', '/seguridad/grupos'],
+        ['/seguridad/roles/2', 'Detalle de rol', 'Roles', '/seguridad/roles'],
+    ])('%s → "%s" con vuelta a %s', (pathname, label, backLabel, backPath) => {
+        expect(findBreadcrumbMeta(entries, pathname)).toMatchObject({ parent: 'Seguridad', label, backLabel, backPath });
+    });
+
+    test('ruta desconocida → null', () => {
+        expect(findBreadcrumbMeta(entries, '/nada/por/aca')).toBeNull();
     });
 });
