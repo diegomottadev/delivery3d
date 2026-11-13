@@ -7,6 +7,7 @@ import AppFooter from './AppFooter';
 import AppConfig from './AppConfig';
 import AppMenu from './AppMenu';
 import AppBreadcrumb from './AppBreadcrumb';
+import { DetailBreadcrumbProvider } from './navigation/DetailBreadcrumbContext';
 import AppInlineProfile from './AppInlineProfile';
 import OrderList from './features/orders/OrderList';
 import WorkshopSettingsView from './features/settings/WorkshopSettingsView';
@@ -267,6 +268,7 @@ const App = () => {
     const menuContainerClassName = classNames('layout-menu-container', { 'layout-menu-container-inactive': !isMenuVisible() });
 
     return (
+        <DetailBreadcrumbProvider>
         <div className={containerClassName} onClick={onDocumentClick}>
             <Tooltip ref={copyTooltipRef} target=".block-action-copy" position="bottom" content="Copied to clipboard" event="focus" />
 
@@ -345,6 +347,7 @@ const App = () => {
 
             {staticMenuMobileActive && <div className="layout-mask"></div>}
         </div>
+        </DetailBreadcrumbProvider>
     );
 };
 

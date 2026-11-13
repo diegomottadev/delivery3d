@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useDetailBreadcrumbLabel } from '../../../navigation/DetailBreadcrumbContext';
 import { Link, useParams } from 'react-router-dom';
 import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
@@ -33,13 +34,21 @@ const RoleDetailView = () => {
     const editor = useNameDescriptionEditor(mutate);
 
     const role = detail.data?.role;
+    useDetailBreadcrumbLabel(role?.name);
     const catalog = useMemo(() => detail.data?.catalog || [], [detail.data]);
     const original = useMemo(() => new Set(role?.permissions || []), [role]);
-    const [selected, setSelected] = useState(new Set());
-
+    // Solo se guardan los cambios pendientes (code → marcado o no), aplicados sobre lo que vino del servidor.
+    // Así una recarga (p.ej. tras un 409) trae los cambios de otros sin perder las casillas tocadas.
+    const [pending, setPending] = useState(() => new Map());
     useEffect(() => {
-        setSelected(new Set(original));
-    }, [original]);
+        setPending(new Map());
+    }, [roleId]);
+    const selected = useMemo(() => {
+        const next = new Set(original);
+        pending.forEach((checked, code) => (checked ? next.add(code) : next.delete(code)));
+        return next;
+    }, [original, pending]);
+    const clearPending = () => setPending(new Map());
 
     const descriptions = useMemo(() => {
         const map = new Map();
@@ -59,15 +68,20 @@ const RoleDetailView = () => {
     const blockedReason = selfAssignBlocked ? `Tenés este rol: ${SELF_ASSIGNMENT_REASON}` : lockout ? SELF_LOCKOUT_REASON : null;
 
     const toggle = (code) =>
-        setSelected((prev) => {
-            const next = new Set(prev);
-            if (next.has(code)) next.delete(code);
-            else next.add(code);
+        setPending((prev) => {
+            const next = new Map(prev);
+            const checked = !selected.has(code);
+            if (checked === original.has(code)) next.delete(code);
+            else next.set(code, checked);
             return next;
         });
 
     const nextPermissions = () => [...selected].sort();
-    const persist = () => mutate(() => api.setRolePermissions(role.id, nextPermissions()), 'Permisos del rol actualizados');
+    const persist = async () => {
+        const outcome = await mutate(() => api.setRolePermissions(role.id, nextPermissions()), 'Permisos del rol actualizados');
+        if (outcome.ok) clearPending();
+        return outcome;
+    };
 
     const save = () => {
         if (removed.length === 0) {
@@ -115,7 +129,7 @@ const RoleDetailView = () => {
                         </h4>
                         <Can perm={PERM.RBAC_MANAGE}>
                             <div className="flex gap-2">
-                                <Button label="Descartar" icon="pi pi-undo" className="p-button-text p-button-sm" disabled={!dirty} onClick={() => setSelected(new Set(original))} />
+                                <Button label="Descartar" icon="pi pi-undo" className="p-button-text p-button-sm" disabled={!dirty} onClick={clearPending} />
                                 <Button label="Guardar permisos" icon="pi pi-save" className="p-button-sm" disabled={!dirty || Boolean(blockedReason)} onClick={save} />
                             </div>
                         </Can>

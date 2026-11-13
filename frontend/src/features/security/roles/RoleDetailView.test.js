@@ -90,6 +90,22 @@ describe('RoleDetailView (/seguridad/roles/:roleId)', () => {
         expect(securityApi.setRolePermissions).toHaveBeenCalledWith(2, []);
     });
 
+    test('un 409 al guardar recarga el rol pero conserva las casillas tocadas', async () => {
+        securityApi.setRolePermissions.mockRejectedValue(axiosError(409, { error: 'Conflicto', code: 'SELF_ASSIGNMENT' }));
+        await renderDetail();
+        fireEvent.click(checkbox('Eliminar pedidos'));
+        // Mientras tanto, otro admin le agregó rbac:read al rol: la recarga lo trae.
+        securityApi.getRole.mockResolvedValue({ ...ROLE, permissions: ['orders:read', 'rbac:read'] });
+        await clickAndFlush(screen.getByRole('button', { name: /Guardar permisos/ }));
+        expect(securityApi.getRole).toHaveBeenCalledTimes(2);
+        // El Checkbox de PrimeReact solo fija el input nativo al montar: lo visible es la caja resaltada.
+        const shownChecked = (label) => checkbox(label).closest('.p-checkbox').querySelector('.p-checkbox-box').classList.contains('p-highlight');
+        expect(shownChecked('Eliminar pedidos')).toBe(true);
+        expect(shownChecked('Ver la configuración de seguridad')).toBe(true);
+        expect(shownChecked('Ver pedidos')).toBe(true);
+        expect(screen.getByRole('button', { name: /Guardar permisos/ })).toBeEnabled();
+    });
+
     test('"Descartar" vuelve al estado guardado', async () => {
         await renderDetail();
         fireEvent.click(checkbox('Eliminar pedidos'));

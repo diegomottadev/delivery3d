@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { useDetailBreadcrumbLabel } from '../../../navigation/DetailBreadcrumbContext';
 import { Link, useParams } from 'react-router-dom';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
@@ -72,6 +73,7 @@ const GroupDetailView = () => {
     const editor = useNameDescriptionEditor(mutate);
 
     const group = detail.data;
+    useDetailBreadcrumbLabel(group?.name);
     const id = group?.id;
     const members = asList(group?.members);
     const roles = asList(group?.roles);

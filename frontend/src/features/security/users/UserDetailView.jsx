@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { useDetailBreadcrumbLabel } from '../../../navigation/DetailBreadcrumbContext';
 import { Link, useParams } from 'react-router-dom';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { DataTable } from 'primereact/datatable';
@@ -235,6 +236,7 @@ const UserDetailView = () => {
 
     const data = detail.data;
     const user = data?.user;
+    useDetailBreadcrumbLabel(user?.username);
     const isMe = Boolean(user) && user.id === myUserId;
     // SELF_ASSIGNMENT directo: nadie se agrega grupos ni roles a sí mismo (el superusuario está exento).
     const selfBlocked = isMe && !isSuperuser;
