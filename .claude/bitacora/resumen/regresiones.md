@@ -20,3 +20,10 @@
 - **Fix**: devolver las carpetas a `Personal Develops`, `chown` de la carpeta padre, `git worktree repair` y reiniciar los contenedores.
 - **Prevención**: si se mueve un proyecto, recrear sus contenedores (`docker compose up -d`) desde la ruta nueva; `Personal Develops` tiene que ser del usuario, no de root.
 - **veces**: 1
+
+## 2026-11-13 · CHECK en los modelos que no existían en la base real
+- **Síntoma**: la base de desarrollo aceptaba datos que los tests rechazan (6 CHECK faltantes).
+- **Causa**: los tests crean el esquema con `db.create_all()`; los CHECK se agregaron al modelo sin migración, y Alembic no compara CHECK.
+- **Fix**: migración `e5c1a7d93f20`.
+- **Prevención**: paso de CI que migra una base vacía y corre `flask db check` + `tools.schema_check` ([skill mysql-database](../../skills/mysql-database/SKILL.md)).
+- **veces**: 1
