@@ -11,3 +11,4 @@ Decisiones vigentes y reemplazadas. Las de diseño de un cambio viven en su `ope
 - 2026-11-13 · Selects nativos en lugar del `Dropdown` de PrimeReact en Seguridad · por qué: el `Dropdown` no se puede testear en jsdom · ref: [2026-11-13](../2026-11-13.md)
 - 2026-11-13 · Sin skills externos en `.agents/skills`; los skills del proyecto viven solo en `.claude/skills` · por qué: los enlaces al plugin estaban rotos y Claude Code no lee esa carpeta · ref: [2026-11-13](../2026-11-13.md)
 - 2026-11-13 · Todo cambio de esquema toca modelo y migración con los mismos nombres y se verifica con `flask db check` + `tools.schema_check` (también en CI) · por qué: los tests usan create_all y no detectan una migración faltante · ref: [2026-11-13](../2026-11-13.md)
+- 2026-11-13 · Código en `app/backend` y `app/frontend` · por qué: pedido del usuario · ref: [2026-11-13](../2026-11-13.md)

@@ -11,18 +11,18 @@ Skill para **escribir** y **revisar** código seguro en Delivery3D según el OWA
 
 | Capa | Ubicación | Notas de seguridad |
 |---|---|---|
-| App factory / config | `backend/app/__init__.py`, `backend/app/config.py` | Secretos solo por entorno (`require_env`), headers en `after_request` |
-| AuthN / AuthZ | `backend/app/auth/security.py` | `login_required` (JWT HS256, `g.current_user`), `roles_required(*roles)` (RBAC) |
-| Login | `backend/app/auth/routes.py`, `services.py` | Mensaje genérico, `check_password` con hash salado |
-| Endpoints | `backend/app/<módulo>/routes.py` | Blueprints `url_prefix="/api/<módulo>"`; toda ruta lleva `@login_required` |
-| Validación | `backend/app/orders/schemas.py`, `orders/pricing.py` | Lista blanca de campos, `Decimal` con `ROUND_HALF_UP` |
-| Lógica / transacciones | `backend/app/<módulo>/services.py` | Commit/rollback explícito, UPDATE condicional contra carreras |
-| Estados | `backend/app/orders/state_machine.py` | Transiciones válidas = regla de negocio de seguridad |
-| Dinero | `backend/app/money.py`, `cashbox/` | Nunca `float`; movimientos de caja son registro contable |
-| Frontend API | `frontend/src/features/*/…Api.js`, `setupProxy.js` | Axios + proxy `/api` → backend; token JWT en `localStorage` |
-| Infra | `docker-compose.yml`, `backend/Dockerfile`, `backend/.env.example` | `.env` NUNCA se lee ni se versiona (ver `.claude/settings.json`) |
+| App factory / config | `app/backend/app/__init__.py`, `app/backend/app/config.py` | Secretos solo por entorno (`require_env`), headers en `after_request` |
+| AuthN / AuthZ | `app/backend/app/auth/security.py` | `login_required` (JWT HS256, `g.current_user`), `roles_required(*roles)` (RBAC) |
+| Login | `app/backend/app/auth/routes.py`, `services.py` | Mensaje genérico, `check_password` con hash salado |
+| Endpoints | `app/backend/app/<módulo>/routes.py` | Blueprints `url_prefix="/api/<módulo>"`; toda ruta lleva `@login_required` |
+| Validación | `app/backend/app/orders/schemas.py`, `orders/pricing.py` | Lista blanca de campos, `Decimal` con `ROUND_HALF_UP` |
+| Lógica / transacciones | `app/backend/app/<módulo>/services.py` | Commit/rollback explícito, UPDATE condicional contra carreras |
+| Estados | `app/backend/app/orders/state_machine.py` | Transiciones válidas = regla de negocio de seguridad |
+| Dinero | `app/backend/app/money.py`, `cashbox/` | Nunca `float`; movimientos de caja son registro contable |
+| Frontend API | `app/frontend/src/features/*/…Api.js`, `setupProxy.js` | Axios + proxy `/api` → backend; token JWT en `localStorage` |
+| Infra | `docker-compose.yml`, `app/backend/Dockerfile`, `app/backend/.env.example` | `.env` NUNCA se lee ni se versiona (ver `.claude/settings.json`) |
 
-**Regla de oro:** no leer, imprimir ni pedir el contenido de `backend/.env`, variables de entorno (`printenv`, `docker inspect`) ni secretos. Para revisar config usar `backend/.env.example` y el código que la consume.
+**Regla de oro:** no leer, imprimir ni pedir el contenido de `app/backend/.env`, variables de entorno (`printenv`, `docker inspect`) ni secretos. Para revisar config usar `app/backend/.env.example` y el código que la consume.
 
 ## Checklist
 
@@ -33,7 +33,7 @@ Resumen de lo más crítico en este repo:
 
 - **A01** — Toda ruta con `@login_required`; operaciones destructivas/financieras con `@roles_required("admin")`. Acceso a recursos por ID: validar existencia y, si aplica, pertenencia. Nunca `Model(**request.json)`.
 - **A02** — Sin `--debug` ni `FLASK_DEBUG=1` fuera de dev; headers de seguridad; sin CORS abierto.
-- **A03** — `pip-audit -r backend/requirements.txt`, `npm audit` en `frontend/`; versiones pineadas y lockfile commiteado.
+- **A03** — `pip-audit -r app/backend/requirements.txt`, `npm audit` en `frontend/`; versiones pineadas y lockfile commiteado.
 - **A04** — Passwords solo con hash (`set_password`/`check_password`); `JWT_SECRET_KEY` fuerte desde entorno; HTTPS en prod.
 - **A05** — Solo ORM o `text()` con parámetros bind; nada de f-strings en SQL; sin `dangerouslySetInnerHTML`; sin `subprocess(shell=True)`.
 - **A06** — Rate limit en `/api/auth/login`; máquina de estados como única vía de cambio de estado; montos validados con `Decimal`.
@@ -60,7 +60,7 @@ Al crear o modificar endpoints, servicios, modelos, formularios o config, aplica
 7. **Auditoría** → acciones destructivas o financieras dejan rastro (`OrderStatusHistory`, `CashMovement.user_id`, o log).
 8. **Frontend** → nunca `dangerouslySetInnerHTML` con datos del backend; no guardar más que el token; no loguear el token en consola.
 9. **Secretos** → solo `require_env("NOMBRE")` + placeholder en `.env.example`. Nunca un default con valor real.
-10. **Tests** → por cada control de acceso, un test que verifique 401 (sin token) y 403 (rol incorrecto). Patrón en `backend/tests/conftest.py` (`auth_headers`).
+10. **Tests** → por cada control de acceso, un test que verifique 401 (sin token) y 403 (rol incorrecto). Patrón en `app/backend/tests/conftest.py` (`auth_headers`).
 
 Si un requisito del usuario contradice un control (ej. "dejá que cualquiera borre"), implementarlo pero **avisar el riesgo explícitamente** en la respuesta.
 
@@ -93,7 +93,7 @@ Si un requisito del usuario contradice un control (ej. "dejá que cualquiera bor
 
 | # | Categoría | Severidad | Archivo:línea | Problema | Fix |
 |---|---|---|---|---|---|
-| 1 | A01 Broken Access Control | Alta | `backend/app/x/routes.py:42` | … | … |
+| 1 | A01 Broken Access Control | Alta | `app/backend/app/x/routes.py:42` | … | … |
 
 ### Detalle
 **#1 — <título corto>**

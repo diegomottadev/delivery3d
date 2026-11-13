@@ -21,7 +21,7 @@ SECRETOS = [
     (r"eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]+", "[JWT REDACTADO]"),
     (r"(?i)bearer\s+[A-Za-z0-9._\-]{16,}", "Bearer [REDACTADO]"),
     (r"(?i)(mysql(?:\+pymysql)?://[^:\s]+:)[^@\s]+@", r"\1[REDACTADO]@"),  # URL con contraseña
-    # Variables del backend/.env y genéricas: JWT_SECRET_KEY=..., DB_PASSWORD: ..., etc.
+    # Variables del app/backend/.env y genéricas: JWT_SECRET_KEY=..., DB_PASSWORD: ..., etc.
     (r"(?i)(\b[\w]*(?:password|passwd|secret|token|api[_-]?key|contraseña)[\w]*\s*[:=]\s*)\S+",
      r"\1[REDACTADO]"),
 ]

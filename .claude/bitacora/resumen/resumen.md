@@ -19,7 +19,7 @@
 ## Zonas frágiles
 - Modelos vs migraciones: los tests usan create_all ([regresiones](regresiones.md)).
 - Modelo de usuarios y migraciones ([regresiones](regresiones.md)).
-- Configuración y secretos del backend: depende de `backend/.env` ([regresiones](regresiones.md)).
+- Configuración y secretos del backend: depende de `app/backend/.env` ([regresiones](regresiones.md)).
 - Montajes de Docker sobre rutas del host ([regresiones](regresiones.md)).
 
 ## Pendientes

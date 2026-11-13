@@ -15,7 +15,7 @@ Para prevenir eliminaciones accidentales de pedidos en producción activa o con 
    - Se eliminan en cascada (`delete-orphan`) sus piezas (`order_items`), parámetros de cotización (`order_quotes`) e historial de auditoría (`order_status_history`).
    - Endpoint protegido con `@login_required` retornando 200 `{ message: "..." }` o 404 si la orden no existe.
 2. **Frontend:**
-   - Función `deleteOrder(orderId)` en `frontend/src/features/orders/ordersApi.js`.
+   - Función `deleteOrder(orderId)` en `app/frontend/src/features/orders/ordersApi.js`.
    - Botón de eliminación (ícono papelera `pi pi-trash` con color de peligro y tooltip) visible en todas las tarjetas de pedidos del tablero Kanban (`OrderBoard.jsx`) en cualquier estado/columna, así como en la tabla general de pedidos (`OrderList.jsx`).
    - Diálogo modal de confirmación (`Dialog`) que detalla el ID de la orden, nombre del cliente, estado actual y advertencia clara de que la acción es irreversible antes de disparar la petición HTTP.
    - Refresco automático del tablero y notificación toast de confirmación.

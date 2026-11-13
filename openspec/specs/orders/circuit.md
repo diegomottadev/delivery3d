@@ -11,17 +11,17 @@
 
 | Entry Point | Trigger Mechanism | File:Line |
 |---|---|---|
-| `POST /api/orders` | HTTP POST (Alta de pedido) | `backend/app/orders/routes.py:18` |
-| `GET /api/orders` | HTTP GET (Listar pedidos) | `backend/app/orders/routes.py:35` |
-| `GET /api/orders/<id>` | HTTP GET (Detalle de pedido) | `backend/app/orders/routes.py:43` |
-| `POST /api/orders/<id>/quote` | HTTP POST (Calcular cotización) | `backend/app/orders/routes.py:53` |
-| `POST /api/orders/<id>/quote/confirm` | HTTP POST (Confirmar cotización) | `backend/app/orders/routes.py:68` |
-| `POST /api/orders/<id>/approve` | HTTP POST (Aprobar pedido con/sin seña) | `backend/app/orders/routes.py:84` |
-| `POST /api/orders/<id>/start-printing` | HTTP POST (Comenzar impresión) | `backend/app/orders/routes.py:96` |
-| `POST /api/orders/<id>/mark-ready` | HTTP POST (Marcar como listo) | `backend/app/orders/routes.py:108` |
-| `POST /api/orders/<id>/deliver` | HTTP POST (Entregar/Cobrar) | `backend/app/orders/routes.py:120` |
-| `GET /api/orders/<id>/history` | HTTP GET (Historial de auditoría) | `backend/app/orders/routes.py:132` |
-| `DELETE /api/orders/<id>` | HTTP DELETE (Eliminar orden permanentemente) | `backend/app/orders/routes.py:199` |
+| `POST /api/orders` | HTTP POST (Alta de pedido) | `app/backend/app/orders/routes.py:18` |
+| `GET /api/orders` | HTTP GET (Listar pedidos) | `app/backend/app/orders/routes.py:35` |
+| `GET /api/orders/<id>` | HTTP GET (Detalle de pedido) | `app/backend/app/orders/routes.py:43` |
+| `POST /api/orders/<id>/quote` | HTTP POST (Calcular cotización) | `app/backend/app/orders/routes.py:53` |
+| `POST /api/orders/<id>/quote/confirm` | HTTP POST (Confirmar cotización) | `app/backend/app/orders/routes.py:68` |
+| `POST /api/orders/<id>/approve` | HTTP POST (Aprobar pedido con/sin seña) | `app/backend/app/orders/routes.py:84` |
+| `POST /api/orders/<id>/start-printing` | HTTP POST (Comenzar impresión) | `app/backend/app/orders/routes.py:96` |
+| `POST /api/orders/<id>/mark-ready` | HTTP POST (Marcar como listo) | `app/backend/app/orders/routes.py:108` |
+| `POST /api/orders/<id>/deliver` | HTTP POST (Entregar/Cobrar) | `app/backend/app/orders/routes.py:120` |
+| `GET /api/orders/<id>/history` | HTTP GET (Historial de auditoría) | `app/backend/app/orders/routes.py:132` |
+| `DELETE /api/orders/<id>` | HTTP DELETE (Eliminar orden permanentemente) | `app/backend/app/orders/routes.py:199` |
 
 ---
 
@@ -105,23 +105,23 @@ DELETE /api/orders/<id>
 
 | File | Responsibility |
 |---|---|
-| `backend/app/orders/models.py` | Modelos `Order`, `OrderItem`, `OrderQuote`, `OrderStatusHistory`, enum `OrderStatus` |
-| `backend/app/orders/routes.py` | Endpoints REST de la API (`orders_bp`) |
-| `backend/app/orders/services.py` | Lógica de negocio transaccional, orquestación de DB y guardas |
-| `backend/app/orders/schemas.py` | Validación de payloads y serialización de modelos |
-| `backend/app/orders/pricing.py` | Función pura `compute_quote` (cálculo de costos y precio sugerido con `Decimal`) |
-| `backend/app/money.py` | Constantes y reglas puras de dinero: `DECIMAL_10_2_MAX`, `DEFAULT_MATERIAL_COST_PER_KG`, `CENT`, `has_sub_cent_precision` |
-| `backend/app/cashbox/balance.py` | Saldo pendiente del pedido (`informed_price`, `total_paid`, `pending_from`, `pending_balance`) |
-| `backend/app/orders/state_machine.py` | Matriz de transiciones permitidas del ciclo de vida |
-| `backend/app/clients/models.py` | Modelo `Client` (canales de contacto, Instagram, teléfono) |
-| `backend/app/materials/models.py` | Modelo `Material` (catálogo de filamentos con costo por kg) |
-| `backend/app/materials/routes.py` | Endpoint `GET /api/materials` para listar catálogo de filamentos |
-| `backend/app/cashbox/models.py` | Modelo `CashMovement` (movimientos de caja, señas vinculadas a `order_id`) |
-| `frontend/src/features/orders/ordersApi.js` | Cliente HTTP centralizado (Axios) con endpoints de órdenes, cotizaciones y ciclo de vida |
-| `frontend/src/features/orders/OrderIntakeForm.jsx` | Modal de alta manual multi-pieza con selección de material y validaciones |
-| `frontend/src/features/orders/QuoteModal.jsx` | Modal de cálculo de costos (Bambu A1), desglose y confirmación de precio informado |
-| `frontend/src/features/orders/OrderList.jsx` | Tabla PrimeReact DataTable de pedidos con badges de estado y fecha |
-| `frontend/src/features/orders/OrderBoard.jsx` | Tablero Kanban por columnas con acciones de avance de estado, registro de seña e historial |
+| `app/backend/app/orders/models.py` | Modelos `Order`, `OrderItem`, `OrderQuote`, `OrderStatusHistory`, enum `OrderStatus` |
+| `app/backend/app/orders/routes.py` | Endpoints REST de la API (`orders_bp`) |
+| `app/backend/app/orders/services.py` | Lógica de negocio transaccional, orquestación de DB y guardas |
+| `app/backend/app/orders/schemas.py` | Validación de payloads y serialización de modelos |
+| `app/backend/app/orders/pricing.py` | Función pura `compute_quote` (cálculo de costos y precio sugerido con `Decimal`) |
+| `app/backend/app/money.py` | Constantes y reglas puras de dinero: `DECIMAL_10_2_MAX`, `DEFAULT_MATERIAL_COST_PER_KG`, `CENT`, `has_sub_cent_precision` |
+| `app/backend/app/cashbox/balance.py` | Saldo pendiente del pedido (`informed_price`, `total_paid`, `pending_from`, `pending_balance`) |
+| `app/backend/app/orders/state_machine.py` | Matriz de transiciones permitidas del ciclo de vida |
+| `app/backend/app/clients/models.py` | Modelo `Client` (canales de contacto, Instagram, teléfono) |
+| `app/backend/app/materials/models.py` | Modelo `Material` (catálogo de filamentos con costo por kg) |
+| `app/backend/app/materials/routes.py` | Endpoint `GET /api/materials` para listar catálogo de filamentos |
+| `app/backend/app/cashbox/models.py` | Modelo `CashMovement` (movimientos de caja, señas vinculadas a `order_id`) |
+| `app/frontend/src/features/orders/ordersApi.js` | Cliente HTTP centralizado (Axios) con endpoints de órdenes, cotizaciones y ciclo de vida |
+| `app/frontend/src/features/orders/OrderIntakeForm.jsx` | Modal de alta manual multi-pieza con selección de material y validaciones |
+| `app/frontend/src/features/orders/QuoteModal.jsx` | Modal de cálculo de costos (Bambu A1), desglose y confirmación de precio informado |
+| `app/frontend/src/features/orders/OrderList.jsx` | Tabla PrimeReact DataTable de pedidos con badges de estado y fecha |
+| `app/frontend/src/features/orders/OrderBoard.jsx` | Tablero Kanban por columnas con acciones de avance de estado, registro de seña e historial |
 
 ---
 

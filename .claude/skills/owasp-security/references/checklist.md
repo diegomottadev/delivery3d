@@ -6,10 +6,10 @@ Cada ítem: **qué verificar** → *cómo detectarlo en este repo*.
 
 ## A01 — Broken Access Control (incluye SSRF)
 
-- [ ] Toda ruta de `backend/app/*/routes.py` tiene `@login_required` o `@roles_required(...)`.
-      *`grep -n "_bp\.\(get\|post\|put\|patch\|delete\)" -A1 backend/app/*/routes.py` y buscar las que no tengan decorador. Excepción esperada: `POST /api/auth/login`.*
+- [ ] Toda ruta de `app/backend/app/*/routes.py` tiene `@login_required` o `@roles_required(...)`.
+      *`grep -n "_bp\.\(get\|post\|put\|patch\|delete\)" -A1 app/backend/app/*/routes.py` y buscar las que no tengan decorador. Excepción esperada: `POST /api/auth/login`.*
 - [ ] Operaciones destructivas o sensibles (DELETE, caja, settings, usuarios, impresoras) exigen `@roles_required("admin")`, no solo login.
-      *`grep -rn "roles_required" backend/app` — si solo aparece la definición, no hay RBAC aplicado.*
+      *`grep -rn "roles_required" app/backend/app` — si solo aparece la definición, no hay RBAC aplicado.*
 - [ ] El orden de decoradores es `@<bp>.<método>(...)` primero y luego `@login_required` (si se invierte, Flask registra la vista sin protección).
 - [ ] IDOR/BOLA: en recursos con dueño (`created_by`, `user_id`), filtrar por `g.current_user_id` o validar rol. En este repo los pedidos son del taller (multi-operador), así que el control es por **rol**, no por dueño — documentarlo si cambia.
 - [ ] Mass assignment: nunca `Model(**payload)` ni `setattr` en bucle sobre `request.json`. Usar validador con lista blanca (patrón `orders/schemas.py::validate_order_intake`). Campos como `role`, `is_active`, `status`, `created_by`, `id` jamás vienen del cliente.
@@ -20,8 +20,8 @@ Cada ítem: **qué verificar** → *cómo detectarlo en este repo*.
 
 ## A02 — Security Misconfiguration
 
-- [ ] `backend/Dockerfile` / compose: `flask run --debug` o `FLASK_DEBUG=1` solo en desarrollo. El debugger de Werkzeug en `0.0.0.0` permite ejecución de código si se obtiene el PIN. En prod: gunicorn sin debug.
-- [ ] `backend/.env` en `.gitignore`; `.env.example` solo con placeholders `<...>`.
+- [ ] `app/backend/Dockerfile` / compose: `flask run --debug` o `FLASK_DEBUG=1` solo en desarrollo. El debugger de Werkzeug en `0.0.0.0` permite ejecución de código si se obtiene el PIN. En prod: gunicorn sin debug.
+- [ ] `app/backend/.env` en `.gitignore`; `.env.example` solo con placeholders `<...>`.
 - [ ] Sin valores por defecto para secretos en el código (`os.environ.get("X", "valor")`) → usar `app.config.require_env`.
 - [ ] Headers en `after_request` (`app/__init__.py`): `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`; agregar `Referrer-Policy: no-referrer`, `Content-Security-Policy` (en el server que sirve el build de React) y `Strict-Transport-Security` en prod.
 - [ ] CORS: hoy no hay `flask-cors` (el frontend usa proxy `setupProxy.js`). Si se agrega, `origins` explícitos, nunca `*` con credenciales.
@@ -33,10 +33,10 @@ Cada ítem: **qué verificar** → *cómo detectarlo en este repo*.
 
 ## A03 — Software Supply Chain Failures
 
-- [ ] `cd backend && .venv/bin/pip install pip-audit && .venv/bin/pip-audit -r requirements.txt` sin vulnerabilidades altas.
-- [ ] `cd frontend && npm audit --omit=dev` sin altas/críticas en dependencias de runtime.
+- [ ] `cd app/backend && .venv/bin/pip install pip-audit && .venv/bin/pip-audit -r requirements.txt` sin vulnerabilidades altas.
+- [ ] `cd app/frontend && npm audit --omit=dev` sin altas/críticas en dependencias de runtime.
 - [ ] `requirements.txt` con versiones exactas (`==`) — ya se cumple. Considerar hashes (`pip-compile --generate-hashes`).
-- [ ] `frontend/package-lock.json` commiteado; instalar con `npm ci`.
+- [ ] `app/frontend/package-lock.json` commiteado; instalar con `npm ci`.
 - [ ] Imagen base `python:3.13-slim` con tag fijo (idealmente digest); `apt-get` mínimo.
 - [ ] Paquetes abandonados o de la plantilla Babylon que no se usan → eliminarlos (menos superficie). Revisar `react-scripts` (CRA está discontinuado).
 - [ ] Herramientas de dev (`pytest`, `ruff`) separadas de las de runtime en la imagen de producción.
@@ -54,11 +54,11 @@ Cada ítem: **qué verificar** → *cómo detectarlo en este repo*.
 ## A05 — Injection
 
 - [ ] SQL: solo ORM (`Model.query`, `db.select`, `db.update`). Si hay SQL crudo, `db.text("... :param").bindparams(...)`.
-      *`grep -rn "text(\|execute(\|f\"SELECT\|f\"UPDATE\|f\"DELETE\|% (" backend/app`*
+      *`grep -rn "text(\|execute(\|f\"SELECT\|f\"UPDATE\|f\"DELETE\|% (" app/backend/app`*
 - [ ] `order_by`/columnas dinámicas desde query params → mapear contra allowlist, nunca `getattr(Model, request.args["sort"])` sin validar.
 - [ ] `LIKE` con input del usuario: escapar `%` y `_`.
 - [ ] XSS en React: prohibido `dangerouslySetInnerHTML` con datos de la API. `href={dato}` → validar que empiece con `http(s)://` (evita `javascript:`).
-      *`grep -rn "dangerouslySetInnerHTML\|innerHTML\|eval(" frontend/src`*
+      *`grep -rn "dangerouslySetInnerHTML\|innerHTML\|eval(" app/frontend/src`*
 - [ ] Command injection: sin `os.system`, `subprocess(..., shell=True)`; si se integra con la impresora o slicer, lista de argumentos y valores validados.
 - [ ] Path traversal: nombres de archivo del usuario con `werkzeug.utils.secure_filename` y ruta resuelta dentro del directorio base.
 - [ ] Inyección en exportes CSV/Excel (si se agregan): escapar celdas que empiezan con `= + - @`.
@@ -84,12 +84,12 @@ Cada ítem: **qué verificar** → *cómo detectarlo en este repo*.
 - [ ] Frontend: token en `localStorage` es robable ante cualquier XSS → mantener A05 estricto; alternativa: cookie `HttpOnly; Secure; SameSite=Strict` + protección CSRF. Limpiar token en logout y en 401.
 - [ ] Contraseñas: longitud mínima ≥ 12 al crearlas/cambiarlas; la del seed viene de entorno.
 - [ ] Ningún JWT ni credencial embebida en el frontend como "fallback de desarrollo" (ya pasó: `DEFAULT_DEV_TOKEN` en `ordersApi.js`/`cashboxApi.js`, firmado con el secreto por defecto = acceso admin sin login).
-      *`grep -rn "eyJhbGci\|DEV_TOKEN\|Bearer ey" frontend/src`*
+      *`grep -rn "eyJhbGci\|DEV_TOKEN\|Bearer ey" app/frontend/src`*
 
 ## A08 — Software or Data Integrity Failures
 
 - [ ] Sin `pickle.loads`, `yaml.load` (usar `safe_load`), `eval`/`exec` sobre datos externos.
-- [ ] Migraciones Alembic (`backend/migrations/versions/`) revisadas en PR; nunca autogeneradas y aplicadas sin leer.
+- [ ] Migraciones Alembic (`app/backend/migrations/versions/`) revisadas en PR; nunca autogeneradas y aplicadas sin leer.
 - [ ] Webhooks entrantes (pagos, Bambu Lab cloud, etc.) verifican firma HMAC con `hmac.compare_digest` y timestamp anti-replay.
 - [ ] Integridad contable: `CashMovement` no se edita/borra; correcciones como movimiento compensatorio. Al borrar pedidos se hace `order_id = NULL` (ok) — dejar registro de quién borró.
 - [ ] Datos que vuelven del cliente y que el servidor ya calculó (precio, totales) se **recalculan** en el backend, no se confían.
@@ -108,7 +108,7 @@ NO loguear:
 - [ ] Datos personales completos de clientes (enmascarar teléfono/email).
 
 Verificar:
-- [ ] `grep -rn "print(\|logger\.\|logging\." backend/app` — que no imprima payloads completos de request.
+- [ ] `grep -rn "print(\|logger\.\|logging\." app/backend/app` — que no imprima payloads completos de request.
 - [ ] Frontend: `console.log` de respuestas con token o datos de clientes eliminados en build de prod.
 
 ## A10 — Mishandling of Exceptional Conditions

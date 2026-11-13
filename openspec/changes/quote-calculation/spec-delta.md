@@ -1,6 +1,6 @@
 # Delta Specification: quote-calculation
 
-> **Updated for the normalized schema.** `POST /api/orders/<id>/quote` now takes `{"quote_vars": {...}}` (workshop parameters only — filament cost comes from each `OrderItem`'s `Material.cost_per_kg`, not a payload field). `production_cost`/`suggested_sale_price` are computed on every response, never stored. All scenarios below match `backend/tests/orders/test_pricing.py` (16 tests) and `test_quote_calculation.py` (15 tests).
+> **Updated for the normalized schema.** `POST /api/orders/<id>/quote` now takes `{"quote_vars": {...}}` (workshop parameters only — filament cost comes from each `OrderItem`'s `Material.cost_per_kg`, not a payload field). `production_cost`/`suggested_sale_price` are computed on every response, never stored. All scenarios below match `app/backend/tests/orders/test_pricing.py` (16 tests) and `test_quote_calculation.py` (15 tests).
 
 ## ADDED Requirements
 

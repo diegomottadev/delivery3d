@@ -32,7 +32,7 @@ Sistema de gestión de **pedidos y caja** para un taller de impresión 3D (Bambu
 ### Pasos
 ```bash
 # 1. Configuración: copiar la plantilla y completar los <...>
-cp backend/.env.example backend/.env
+cp app/backend/.env.example app/backend/.env
 #    Para generar secretos: python3 -c "import secrets; print(secrets.token_urlsafe(48))"
 
 # 2. Levantar backend (http://localhost:5000) y frontend (http://localhost:3000)
@@ -48,17 +48,17 @@ Después entrá a http://localhost:3000 con el usuario `operador` y la contrase�
 
 ### Sin Docker (desarrollo)
 ```bash
-cd backend && python -m venv .venv && .venv/bin/pip install -r requirements.txt
+cd app/backend && python -m venv .venv && .venv/bin/pip install -r requirements.txt
 PYTHONPATH=. .venv/bin/flask db upgrade && PYTHONPATH=. .venv/bin/flask run
 
-cd frontend && npm ci && npm start
+cd app/frontend && npm ci && npm start
 ```
 
 ## Tests
 
 ```bash
-cd backend && PYTHONPATH=. .venv/bin/pytest -q && .venv/bin/ruff check app/ tests/ seeds/
-cd frontend && npm test -- --watchAll=false
+cd app/backend && PYTHONPATH=. .venv/bin/pytest -q && .venv/bin/ruff check app/ tests/ seeds/
+cd app/frontend && npm test -- --watchAll=false
 ```
 
 Los tests del backend corren contra una base MySQL real (`DB_TEST_NAME`), no contra mocks. El pipeline de CI los ejecuta en cada push a `main` y a las ramas `feat/**`.
@@ -72,4 +72,4 @@ Los tests del backend corren contra una base MySQL real (`DB_TEST_NAME`), no con
 
 ## Seguridad
 
-Los secretos (credenciales de base, `JWT_SECRET_KEY`) viven solo en `backend/.env`, que nunca se versiona. [`backend/.env.example`](backend/.env.example) tiene solo marcadores.
+Los secretos (credenciales de base, `JWT_SECRET_KEY`) viven solo en `app/backend/.env`, que nunca se versiona. [`app/backend/.env.example`](app/backend/.env.example) tiene solo marcadores.

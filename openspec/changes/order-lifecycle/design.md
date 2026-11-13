@@ -3,12 +3,12 @@
 > **Superseded schema notice:** igual que `order-intake` y `quote-calculation`, este change se adaptó sobre el esquema normalizado (1FN-4FN). La seña opcional registrada al aprobar un pedido **NO se almacena como columna `deposit_amount` en `orders`** (3FN/normalización). En su lugar, cuando `deposit_amount > 0`, se registra un movimiento real en la tabla `cash_movements` (`type="ingreso"`, `category="seña"`, `order_id=order.id`, `user_id=changed_by`) dentro de la misma transacción atómica. Por ende, no requiere migración DDL adicional sobre `orders`.
 
 ## Involved Files (real paths — implementados)
-- `backend/app/orders/state_machine.py` — define el mapa de transiciones válidas `VALID_TRANSITIONS` y `is_valid_transition(from_status, to_status)`.
-- `backend/app/orders/services.py` — implementa `transition_order(order_id, target_status, changed_by, deposit_amount=None)` con guarda optimista y registro opcional en `CashMovement`, y `get_order_history(order_id)`.
-- `backend/app/orders/routes.py` — agrega `POST /api/orders/<order_id>/approve`, `POST /api/orders/<order_id>/start-printing`, `POST /api/orders/<order_id>/mark-ready`, `POST /api/orders/<order_id>/deliver`, `GET /api/orders/<order_id>/history`.
-- `backend/tests/orders/test_lifecycle.py` — 23 tests de integración sobre MySQL real (`delivery3d_test`).
-- `frontend/src/features/orders/OrderBoard.jsx` — diferido (tablero por columnas de estado).
-- `frontend/src/features/orders/ordersApi.js` — diferido (funciones cliente para transiciones).
+- `app/backend/app/orders/state_machine.py` — define el mapa de transiciones válidas `VALID_TRANSITIONS` y `is_valid_transition(from_status, to_status)`.
+- `app/backend/app/orders/services.py` — implementa `transition_order(order_id, target_status, changed_by, deposit_amount=None)` con guarda optimista y registro opcional en `CashMovement`, y `get_order_history(order_id)`.
+- `app/backend/app/orders/routes.py` — agrega `POST /api/orders/<order_id>/approve`, `POST /api/orders/<order_id>/start-printing`, `POST /api/orders/<order_id>/mark-ready`, `POST /api/orders/<order_id>/deliver`, `GET /api/orders/<order_id>/history`.
+- `app/backend/tests/orders/test_lifecycle.py` — 23 tests de integración sobre MySQL real (`delivery3d_test`).
+- `app/frontend/src/features/orders/OrderBoard.jsx` — diferido (tablero por columnas de estado).
+- `app/frontend/src/features/orders/ordersApi.js` — diferido (funciones cliente para transiciones).
 
 ## Technical Approach
 `state_machine.py` declara el mapa de transiciones válidas como datos:

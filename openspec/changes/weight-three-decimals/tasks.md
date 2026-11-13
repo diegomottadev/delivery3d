@@ -4,8 +4,8 @@
 
 - [x] Crear migración Alembic `d9401ab23e7f` para modificar `order_items.weight_g` a `DECIMAL(10, 3)`.
 - [x] Aplicar migración en MySQL (`flask db upgrade`).
-- [x] Modificar `backend/app/orders/models.py`: actualizar `OrderItem.weight_g` a `Numeric(10, 3)`.
-- [x] Modificar `frontend/src/features/orders/OrderIntakeForm.jsx`: actualizar `InputNumber` a `maxFractionDigits={3}`, `min={0.001}`, `minFractionDigits={0}`.
+- [x] Modificar `app/backend/app/orders/models.py`: actualizar `OrderItem.weight_g` a `Numeric(10, 3)`.
+- [x] Modificar `app/frontend/src/features/orders/OrderIntakeForm.jsx`: actualizar `InputNumber` a `maxFractionDigits={3}`, `min={0.001}`, `minFractionDigits={0}`.
 
 ## Verify — Verification
 - [x] Ejecutar tests de backend (`pytest tests/orders/test_intake.py`) verificando almacenamiento y serialización de 3 decimales (`12.345`).

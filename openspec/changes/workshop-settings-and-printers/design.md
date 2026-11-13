@@ -1,26 +1,26 @@
 # Design: workshop-settings-and-printers
 
 ## Involved Files (real paths)
-- `backend/app/settings/models.py`
-- `backend/app/settings/routes.py`
-- `backend/app/printers/models.py`
-- `backend/app/printers/routes.py`
-- `backend/app/orders/models.py`
-- `backend/app/orders/pricing.py`
-- `backend/app/orders/services.py`
-- `backend/app/orders/schemas.py`
-- `backend/migrations/versions/b7189c4d92ef_add_printers_and_workshop_settings.py`
-- `backend/migrations/versions/c83921af7b4e_add_labor_rate_and_time.py`
-- `backend/tests/test_settings.py`
-- `backend/tests/test_printers.py`
-- `backend/tests/orders/test_pricing.py`
-- `backend/tests/orders/test_quote_calculation.py`
-- `frontend/src/features/orders/ordersApi.js`
-- `frontend/src/features/orders/QuoteModal.jsx`
-- `frontend/src/features/settings/WorkshopSettingsView.jsx`
-- `frontend/src/features/orders/QuoteModal.test.js`
-- `frontend/src/features/settings/WorkshopSettingsView.test.js`
-- `frontend/src/App.js`
+- `app/backend/app/settings/models.py`
+- `app/backend/app/settings/routes.py`
+- `app/backend/app/printers/models.py`
+- `app/backend/app/printers/routes.py`
+- `app/backend/app/orders/models.py`
+- `app/backend/app/orders/pricing.py`
+- `app/backend/app/orders/services.py`
+- `app/backend/app/orders/schemas.py`
+- `app/backend/migrations/versions/b7189c4d92ef_add_printers_and_workshop_settings.py`
+- `app/backend/migrations/versions/c83921af7b4e_add_labor_rate_and_time.py`
+- `app/backend/tests/test_settings.py`
+- `app/backend/tests/test_printers.py`
+- `app/backend/tests/orders/test_pricing.py`
+- `app/backend/tests/orders/test_quote_calculation.py`
+- `app/frontend/src/features/orders/ordersApi.js`
+- `app/frontend/src/features/orders/QuoteModal.jsx`
+- `app/frontend/src/features/settings/WorkshopSettingsView.jsx`
+- `app/frontend/src/features/orders/QuoteModal.test.js`
+- `app/frontend/src/features/settings/WorkshopSettingsView.test.js`
+- `app/frontend/src/App.js`
 
 ## Technical Approach
 1. **Normalización 1FN a 4FN/BCNF:**
@@ -50,8 +50,8 @@
 - Todos los endpoints de `/api/settings` y `/api/printers` están protegidos por el decorador `@login_required` (verificación de token JWT Bearer).
 
 ## ⚠️ High-Risk Files / Modules
-- `backend/app/orders/pricing.py`: Lógica financiera de cotización. Cobertura obligatoria del 100%. Debe manejar validaciones de tipos, valores negativos y precisión `Decimal`.
-- `backend/app/orders/models.py` (`OrderQuote`): Restricciones `CheckConstraint` para asegurar que tarifas y tiempos no admitan valores negativos.
+- `app/backend/app/orders/pricing.py`: Lógica financiera de cotización. Cobertura obligatoria del 100%. Debe manejar validaciones de tipos, valores negativos y precisión `Decimal`.
+- `app/backend/app/orders/models.py` (`OrderQuote`): Restricciones `CheckConstraint` para asegurar que tarifas y tiempos no admitan valores negativos.
 
 ## Impact on Data / Integraciones
 - **Base de Datos:**
@@ -87,10 +87,10 @@
 - [x] **Modify** `schemas.py::serialize_order` para incluir desglose `pricing` y atributos de mano de obra en `quote`.
 
 ### Frontend
-- [x] **Create** `frontend/src/features/settings/WorkshopSettingsView.jsx` — Administración de constantes e impresoras.
-- [x] **Modify** `frontend/src/features/orders/QuoteModal.jsx` — Selector de impresora, inputs de horas/minutos y badge de cálculo reactivo.
-- [x] **Modify** `frontend/src/features/orders/ordersApi.js` — Funciones de API (`getSettings`, `updateSettings`, `listPrinters`, `createPrinter`, `updatePrinter`).
-- [x] **Modify** `frontend/src/App.js` — Registro de ruta `/settings` y navegación en menú lateral.
+- [x] **Create** `app/frontend/src/features/settings/WorkshopSettingsView.jsx` — Administración de constantes e impresoras.
+- [x] **Modify** `app/frontend/src/features/orders/QuoteModal.jsx` — Selector de impresora, inputs de horas/minutos y badge de cálculo reactivo.
+- [x] **Modify** `app/frontend/src/features/orders/ordersApi.js` — Funciones de API (`getSettings`, `updateSettings`, `listPrinters`, `createPrinter`, `updatePrinter`).
+- [x] **Modify** `app/frontend/src/App.js` — Registro de ruta `/settings` y navegación en menú lateral.
 
 ### Tests
 - [x] **Create** `tests/test_settings.py` — Tests de lectura, actualización y restricciones de autorización.

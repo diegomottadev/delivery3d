@@ -1,21 +1,21 @@
 # Design: order-intake
 
-> **Superseded schema notice:** este change se implementó originalmente sobre un `Order` con `customer_name`/`contact`/`piece_description` inline. A mitad de implementación se adoptó un esquema normalizado (1FN-4FN/BCNF) que introduce `clients`, `materials` y `order_items` como entidades propias. Este documento refleja el esquema **final, implementado y testeado** (no el borrador inicial). Ver `backend/migrations/schema_design_normalized.sql` para el DDL completo de referencia y `openspec/project.md` para la justificación de normalización.
+> **Superseded schema notice:** este change se implementó originalmente sobre un `Order` con `customer_name`/`contact`/`piece_description` inline. A mitad de implementación se adoptó un esquema normalizado (1FN-4FN/BCNF) que introduce `clients`, `materials` y `order_items` como entidades propias. Este documento refleja el esquema **final, implementado y testeado** (no el borrador inicial). Ver `app/backend/migrations/schema_design_normalized.sql` para el DDL completo de referencia y `openspec/project.md` para la justificación de normalización.
 
 ## Involved Files (real paths — implementados)
-- `backend/requirements.txt`, `backend/.env.example` — dependencias y config (Flask, Flask-SQLAlchemy, Flask-Migrate, PyMySQL, `cryptography`, PyJWT, pytest, ruff).
-- `backend/app/extensions.py` — `db = SQLAlchemy()`, `migrate = Migrate()`.
-- `backend/app/auth/security.py` — `login_required` (placeholder: exige JWT válido, resuelve `g.current_user_id` desde el claim `sub`).
-- `backend/app/auth/models.py` — `User` (`id`, `username`, `password_hash` sin usar aún, `created_at`).
-- `backend/app/clients/models.py` — `Client` (`id`, `name`, `origin`, `phone`, `instagram_username`, `notes`, `created_at`).
-- `backend/app/materials/models.py` — `Material` (`id`, `brand`, `type`, `color`, `cost_per_kg`, `created_at`).
-- `backend/app/orders/models.py` — `Order` (`id`, `client_id`, `user_id`, `status`, `created_at`), `OrderItem` (`order_id`, `material_id`, `piece_description`, `reference_url`, `weight_g`, `print_time_minutes`, `quantity`), `OrderStatusHistory`.
-- `backend/app/orders/schemas.py` — validación de `POST /api/orders` (cliente nuevo o `client_id` existente + lista de ítems) y serialización.
-- `backend/app/orders/services.py` — `create_order(...)`, `list_orders()`, `get_order(order_id)`.
-- `backend/app/orders/routes.py` — `orders_bp`: `POST /api/orders`, `GET /api/orders`, `GET /api/orders/<order_id>`.
-- `backend/migrations/versions/a59cc2d56543_..._and_a1b86c4c24db_normalize_schema_...py` — migraciones Alembic aplicadas.
-- `backend/seeds/seed_operator.py`, `backend/seeds/seed_materials.py` — datos semilla.
-- `backend/tests/orders/test_intake.py` — 20 tests.
+- `app/backend/requirements.txt`, `app/backend/.env.example` — dependencias y config (Flask, Flask-SQLAlchemy, Flask-Migrate, PyMySQL, `cryptography`, PyJWT, pytest, ruff).
+- `app/backend/app/extensions.py` — `db = SQLAlchemy()`, `migrate = Migrate()`.
+- `app/backend/app/auth/security.py` — `login_required` (placeholder: exige JWT válido, resuelve `g.current_user_id` desde el claim `sub`).
+- `app/backend/app/auth/models.py` — `User` (`id`, `username`, `password_hash` sin usar aún, `created_at`).
+- `app/backend/app/clients/models.py` — `Client` (`id`, `name`, `origin`, `phone`, `instagram_username`, `notes`, `created_at`).
+- `app/backend/app/materials/models.py` — `Material` (`id`, `brand`, `type`, `color`, `cost_per_kg`, `created_at`).
+- `app/backend/app/orders/models.py` — `Order` (`id`, `client_id`, `user_id`, `status`, `created_at`), `OrderItem` (`order_id`, `material_id`, `piece_description`, `reference_url`, `weight_g`, `print_time_minutes`, `quantity`), `OrderStatusHistory`.
+- `app/backend/app/orders/schemas.py` — validación de `POST /api/orders` (cliente nuevo o `client_id` existente + lista de ítems) y serialización.
+- `app/backend/app/orders/services.py` — `create_order(...)`, `list_orders()`, `get_order(order_id)`.
+- `app/backend/app/orders/routes.py` — `orders_bp`: `POST /api/orders`, `GET /api/orders`, `GET /api/orders/<order_id>`.
+- `app/backend/migrations/versions/a59cc2d56543_..._and_a1b86c4c24db_normalize_schema_...py` — migraciones Alembic aplicadas.
+- `app/backend/seeds/seed_operator.py`, `app/backend/seeds/seed_materials.py` — datos semilla.
+- `app/backend/tests/orders/test_intake.py` — 20 tests.
 - `frontend/` — **diferido**, ver decisión de alcance (backend de los 3 changes primero).
 
 ## Technical Approach
@@ -36,9 +36,9 @@ Si se envía `client_id`, se reutiliza el cliente existente (404-como-422 si no 
 Order, sus `OrderItem` y la primera fila de `OrderStatusHistory` se crean en una única transacción atómica (`create_order`).
 
 ## Constants / Enums / Magic IDs
-- `OrderStatus` (`backend/app/orders/models.py`): `nuevo, presupuestado, aprobado, imprimiendo, listo, entregado, cancelado` (valores en español minúscula, alineados al esquema normalizado). Este change solo alcanza `nuevo`. `cancelado` está declarado pero sin transición implementada (ver `order-lifecycle`).
-- `ClientOrigin` (`backend/app/clients/models.py`): `whatsapp, instagram_dm, otro`.
-- `MaterialType` (`backend/app/materials/models.py`): `PLA, PETG, ABS, TPU, otro`.
+- `OrderStatus` (`app/backend/app/orders/models.py`): `nuevo, presupuestado, aprobado, imprimiendo, listo, entregado, cancelado` (valores en español minúscula, alineados al esquema normalizado). Este change solo alcanza `nuevo`. `cancelado` está declarado pero sin transición implementada (ver `order-lifecycle`).
+- `ClientOrigin` (`app/backend/app/clients/models.py`): `whatsapp, instagram_dm, otro`.
+- `MaterialType` (`app/backend/app/materials/models.py`): `PLA, PETG, ABS, TPU, otro`.
 
 ## Security & Permissions
 - Todas las rutas de `orders_bp` requieren `@login_required` (placeholder — ver `openspec/project.md`).
@@ -51,7 +51,7 @@ Order, sus `OrderItem` y la primera fila de `OrderStatusHistory` se crean en una
 - Base de datos MySQL 8.0 (contenedor Docker `mysql8`, DB `delivery3d`/`delivery3d_test`, charset `utf8mb4`/`utf8mb4_unicode_ci`, `ENGINE=InnoDB`). Sin integraciones externas.
 
 ## Schema Changes / Migrations
-Ver DDL completo en `backend/migrations/schema_design_normalized.sql`. Resumen de las tablas que este change introduce/usa:
+Ver DDL completo en `app/backend/migrations/schema_design_normalized.sql`. Resumen de las tablas que este change introduce/usa:
 ```sql
 CREATE TABLE users (id, username UNIQUE, password_hash, created_at) ENGINE=InnoDB CHARSET=utf8mb4;
 CREATE TABLE clients (id, name, origin, phone, instagram_username, notes, created_at) ENGINE=InnoDB CHARSET=utf8mb4;
@@ -89,7 +89,7 @@ Migraciones Alembic reales aplicadas: `a59cc2d56543` (esquema inicial denormaliz
 - [ ] Diferido — ver decisión de alcance.
 
 ### Configuration
-- [x] `backend/requirements.txt`, `backend/.env.example`
+- [x] `app/backend/requirements.txt`, `app/backend/.env.example`
 
 ### Tests
 - [x] `test_intake.py` — 20 tests, 100% cobertura de `app/orders` (para este change) y `app/auth`.

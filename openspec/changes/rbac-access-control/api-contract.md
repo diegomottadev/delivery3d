@@ -1,7 +1,7 @@
 # API contract — rbac-access-control
 
 > **Fuente única del contrato de API** entre backend y frontend para este change.
-> Estado: **CERRADO** en la etapa 6 (implementado en `backend/app/rbac/routes.py`). Todo el documento es contrato fijo; §6 y §6.bis se cerraron en la etapa 6 sin cambiar shapes ya fijados.
+> Estado: **CERRADO** en la etapa 6 (implementado en `app/backend/app/rbac/routes.py`). Todo el documento es contrato fijo; §6 y §6.bis se cerraron en la etapa 6 sin cambiar shapes ya fijados.
 > Parte de `frontend-plan.md` §10, con las decisiones aprobadas por el usuario (ver `design.md` → "Respuestas del usuario").
 
 ---
@@ -10,7 +10,7 @@
 
 - JSON, `Authorization: Bearer <jwt>`. El JWT solo identifica (`sub`); **los permisos nunca se leen del token**.
 - Fechas: ISO-8601 en UTC **sin sufijo de zona** (`"2026-11-10T14:03:00"`), igual que el resto de la API (`datetime.isoformat()` sobre `DATETIME` UTC). El frontend debe interpretarlas como UTC.
-- Códigos de permiso: `"recurso:acción"`, minúsculas, snake_case, **recurso en inglés y en plural igual que el endpoint** (`orders:delete`, no `ordenes:delete`). Catálogo final en etapa 3 (`backend/app/rbac/constants.py`).
+- Códigos de permiso: `"recurso:acción"`, minúsculas, snake_case, **recurso en inglés y en plural igual que el endpoint** (`orders:delete`, no `ordenes:delete`). Catálogo final en etapa 3 (`app/backend/app/rbac/constants.py`).
 - Permisos de esta sección: lecturas `/api/rbac/*` → `rbac:read`; escrituras → `rbac:manage`. No existen permisos más finos (`rbac:users:read`, etc.).
 - `is_superuser` pasa cualquier chequeo de permiso; **no** saltea `is_active` (inactivo → 401).
 
@@ -199,7 +199,7 @@ Responde **409** `{"error": "No podés asignarte roles ni permisos a vos mismo",
   { "resource": "rbac", "resource_label": "Seguridad", "permissions": [ … ] } ]
 ```
 - Sin POST/PUT/DELETE: el catálogo sale del enum `Perm`.
-- `resource_label` sale de `RESOURCE_LABELS` en `backend/app/rbac/constants.py` (Q3 aprobada). Los grupos vienen en el orden de `RESOURCE_LABELS`; dentro de cada grupo, los permisos van en el orden del enum `Perm`.
+- `resource_label` sale de `RESOURCE_LABELS` en `app/backend/app/rbac/constants.py` (Q3 aprobada). Los grupos vienen en el orden de `RESOURCE_LABELS`; dentro de cada grupo, los permisos van en el orden del enum `Perm`.
 - Catálogo propuesto: ver `design.md` → "Etapa 3 — propuesta de catálogo".
 
 ---
@@ -261,7 +261,7 @@ Solo lectura (`rbac:read`), **sin efectos**. Sirven para `ConfirmImpactDialog`: 
 
 ## 7. Sincronía `perms.js` ↔ `Perm` (etapa 3/4)
 
-- Archivo frontend: `frontend/src/features/security/permissions/perms.js`.
+- Archivo frontend: `app/frontend/src/features/security/permissions/perms.js`.
 - Formato que el test backend va a parsear: una entrada por línea dentro de `export const PERM = Object.freeze({ ... })`, `NOMBRE_MIEMBRO: 'recurso:acción',`. Los nombres de miembro son iguales a los del enum Python (`RBAC_READ` ↔ `Perm.RBAC_READ`).
 - El test falla si hay un miembro de más o de menos, o si un mismo nombre tiene un code distinto.
 - `orders:read` **va a existir** (lo requieren `GET /api/orders`, `GET /api/orders/<id>` y `/history`). El recurso es `orders`, no `ordenes`. El catálogo completo se fija en la etapa 3.

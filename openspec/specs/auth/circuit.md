@@ -10,10 +10,10 @@
 
 | Entry Point | Trigger Mechanism | File:Line |
 |---|---|---|
-| Iniciar Sesión | HTTP POST `/api/auth/login` | `backend/app/auth/routes.py` |
-| Consultar Identidad | HTTP GET `/api/auth/me` | `backend/app/auth/routes.py` |
-| Guard de Autenticación | `@login_required` decorator | `backend/app/auth/security.py` |
-| Guard de Roles | `@roles_required(*roles)` decorator | `backend/app/auth/security.py` |
+| Iniciar Sesión | HTTP POST `/api/auth/login` | `app/backend/app/auth/routes.py` |
+| Consultar Identidad | HTTP GET `/api/auth/me` | `app/backend/app/auth/routes.py` |
+| Guard de Autenticación | `@login_required` decorator | `app/backend/app/auth/security.py` |
+| Guard de Roles | `@roles_required(*roles)` decorator | `app/backend/app/auth/security.py` |
 
 ---
 
@@ -46,10 +46,10 @@ POST /api/auth/login
 
 | File | Responsibility |
 |---|---|
-| `backend/app/auth/models.py` | Modelo ORM `User` con `password_hash`, `role`, `is_active` y serialización segura `to_dict()` |
-| `backend/app/auth/security.py` | Generación y verificación de JWT, decorators `@login_required`, `@roles_required`, hashing de contraseñas |
-| `backend/app/auth/services.py` | Servicios de negocio de autenticación y gestión de usuarios |
-| `backend/app/auth/routes.py` | Endpoints REST de login, me y usuarios |
-| `frontend/src/features/auth/authApi.js` | Cliente de API para login y verificación de sesión |
-| `frontend/src/features/auth/AuthContext.js` | Contexto de React para sesión de usuario e interceptores Axios |
-| `frontend/src/features/auth/LoginView.jsx` | Pantalla de inicio de sesión con PrimeReact |
+| `app/backend/app/auth/models.py` | Modelo ORM `User` con `password_hash`, `role`, `is_active` y serialización segura `to_dict()` |
+| `app/backend/app/auth/security.py` | Generación y verificación de JWT, decorators `@login_required`, `@roles_required`, hashing de contraseñas |
+| `app/backend/app/auth/services.py` | Servicios de negocio de autenticación y gestión de usuarios |
+| `app/backend/app/auth/routes.py` | Endpoints REST de login, me y usuarios |
+| `app/frontend/src/features/auth/authApi.js` | Cliente de API para login y verificación de sesión |
+| `app/frontend/src/features/auth/AuthContext.js` | Contexto de React para sesión de usuario e interceptores Axios |
+| `app/frontend/src/features/auth/LoginView.jsx` | Pantalla de inicio de sesión con PrimeReact |

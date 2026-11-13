@@ -1,19 +1,19 @@
 services:
   backend:
     build:
-      context: ./backend
+      context: ./app/backend
       dockerfile: Dockerfile
     container_name: delivery3d-backend
     restart: unless-stopped
     ports:
       - "5000:5000"
     env_file:
-      - ./backend/.env
+      - ./app/backend/.env
     environment:
       # Desde el contenedor, MySQL del host se alcanza por host.docker.internal
       - DB_HOST=host.docker.internal
     volumes:
-      - ./backend:/app
+      - ./app/backend:/app
       - /app/.venv
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -23,7 +23,7 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      context: ./app/frontend
       dockerfile: Dockerfile
     container_name: delivery3d-frontend
     restart: unless-stopped
@@ -35,7 +35,7 @@ services:
       - WDS_SOCKET_PORT=0
       - DANGEROUSLY_DISABLE_HOST_CHECK=true
     volumes:
-      - ./frontend:/app
+      - ./app/frontend:/app
       - /app/node_modules
     depends_on:
       - backend

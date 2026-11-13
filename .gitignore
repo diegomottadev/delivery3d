@@ -1,4 +1,4 @@
-# Secretos: nunca se versionan (ver backend/.env.example)
+# Secretos: nunca se versionan (ver app/backend/.env.example)
 .env
 **/.env
 .env.*
@@ -24,7 +24,7 @@ __pycache__/
 .worktrees/
 
 # symlink de la venv en worktrees
-backend/.venv
+app/backend/.venv
 
 # Bitácora: los prompts textuales quedan solo en local (el repo es público)
 .claude/bitacora/prompts/

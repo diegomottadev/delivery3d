@@ -10,9 +10,9 @@
 
 | Entry Point | Trigger Mechanism | File:Line |
 |---|---|---|
-| Split Dashboard View | React Route `/` | `frontend/src/features/dashboard/SplitDashboardView.jsx` |
-| Widget de Caja Compacto | React Component | `frontend/src/features/cashbox/CashboxCompactWidget.jsx` |
-| Tablero Operativo | React Component | `frontend/src/features/orders/OrderBoard.jsx` |
+| Split Dashboard View | React Route `/` | `app/frontend/src/features/dashboard/SplitDashboardView.jsx` |
+| Widget de Caja Compacto | React Component | `app/frontend/src/features/cashbox/CashboxCompactWidget.jsx` |
+| Tablero Operativo | React Component | `app/frontend/src/features/orders/OrderBoard.jsx` |
 
 ---
 
@@ -40,7 +40,7 @@ SplitDashboardView
 
 | File | Responsibility |
 |---|---|
-| `frontend/src/features/dashboard/SplitDashboardView.jsx` | Contenedor principal responsive split-screen con sincronización de eventos |
-| `frontend/src/features/cashbox/CashboxCompactWidget.jsx` | Widget financiero lateral: saldo, métricas compactas, botones de acción y últimos movimientos |
-| `frontend/src/features/orders/OrderBoard.jsx` | Tablero Kanban operativo con cotizador integrado y transiciones de estado |
-| `frontend/src/App.js` | Enrutamiento de la raíz `/` hacia el dashboard integrado |
+| `app/frontend/src/features/dashboard/SplitDashboardView.jsx` | Contenedor principal responsive split-screen con sincronización de eventos |
+| `app/frontend/src/features/cashbox/CashboxCompactWidget.jsx` | Widget financiero lateral: saldo, métricas compactas, botones de acción y últimos movimientos |
+| `app/frontend/src/features/orders/OrderBoard.jsx` | Tablero Kanban operativo con cotizador integrado y transiciones de estado |
+| `app/frontend/src/App.js` | Enrutamiento de la raíz `/` hacia el dashboard integrado |

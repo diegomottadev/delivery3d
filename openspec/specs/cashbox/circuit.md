@@ -10,16 +10,16 @@
 
 | Entry Point | Trigger Mechanism | File:Line |
 |---|---|---|
-| Summary de Caja | HTTP GET `/api/cashbox/summary` | `backend/app/cashbox/routes.py` |
-| Listar Movimientos | HTTP GET `/api/cashbox/movements` | `backend/app/cashbox/routes.py` |
-| Registrar Movimiento | HTTP POST `/api/cashbox/movements` | `backend/app/cashbox/routes.py` |
-| Listar Categorías Ingreso | HTTP GET `/api/cashbox/categories/income` | `backend/app/cashbox/routes.py` |
-| Crear Categoría Ingreso | HTTP POST `/api/cashbox/categories/income` | `backend/app/cashbox/routes.py` |
-| Listar Categorías Egreso | HTTP GET `/api/cashbox/categories/expense` | `backend/app/cashbox/routes.py` |
-| Crear Categoría Egreso | HTTP POST `/api/cashbox/categories/expense` | `backend/app/cashbox/routes.py` |
-| Consultar Saldo Pedido | HTTP GET `/api/cashbox/orders/<order_id>/balance` | `backend/app/cashbox/routes.py` |
-| Cobrar Saldo Pedido | HTTP POST `/api/cashbox/orders/<order_id>/collect-balance` | `backend/app/cashbox/routes.py` |
-| Cobrar en Entrega Pedido | HTTP POST `/api/orders/<order_id>/deliver` (con flag `collect_balance`) | `backend/app/orders/routes.py` |
+| Summary de Caja | HTTP GET `/api/cashbox/summary` | `app/backend/app/cashbox/routes.py` |
+| Listar Movimientos | HTTP GET `/api/cashbox/movements` | `app/backend/app/cashbox/routes.py` |
+| Registrar Movimiento | HTTP POST `/api/cashbox/movements` | `app/backend/app/cashbox/routes.py` |
+| Listar Categorías Ingreso | HTTP GET `/api/cashbox/categories/income` | `app/backend/app/cashbox/routes.py` |
+| Crear Categoría Ingreso | HTTP POST `/api/cashbox/categories/income` | `app/backend/app/cashbox/routes.py` |
+| Listar Categorías Egreso | HTTP GET `/api/cashbox/categories/expense` | `app/backend/app/cashbox/routes.py` |
+| Crear Categoría Egreso | HTTP POST `/api/cashbox/categories/expense` | `app/backend/app/cashbox/routes.py` |
+| Consultar Saldo Pedido | HTTP GET `/api/cashbox/orders/<order_id>/balance` | `app/backend/app/cashbox/routes.py` |
+| Cobrar Saldo Pedido | HTTP POST `/api/cashbox/orders/<order_id>/collect-balance` | `app/backend/app/cashbox/routes.py` |
+| Cobrar en Entrega Pedido | HTTP POST `/api/orders/<order_id>/deliver` (con flag `collect_balance`) | `app/backend/app/orders/routes.py` |
 
 ---
 
@@ -68,16 +68,16 @@ GET /api/cashbox/summary
 
 | File | Responsibility |
 |---|---|
-| `backend/app/cashbox/models.py` | Modelos ORM para `cash_movements`, `cash_income_categories`, `cash_expense_categories` |
-| `backend/app/cashbox/services.py` | Lógica de negocio financiero, balance dinámico y CRUD de categorías de caja; `add_movement` (sin commit) y `create_movement` |
-| `backend/app/cashbox/balance.py` | Única fuente del saldo pendiente de un pedido |
-| `backend/app/money.py` | Constantes y reglas puras de dinero |
-| `backend/app/cashbox/routes.py` | Endpoints REST de movimientos y categorías de caja |
-| `backend/app/settings/models.py` | Modelo con `currency_code` y `currency_symbol` |
-| `frontend/src/features/cashbox/cashboxApi.js` | Cliente Axios para servicios de caja y categorías |
-| `frontend/src/features/cashbox/CashboxView.jsx` | Vista de caja diaria y finanzas con métricas, tabla y carga dinámica de categorías |
-| `frontend/src/features/cashbox/CashboxSettingsView.jsx` | Vista dedicada de configuración y administración de categorías de caja |
-| `frontend/src/features/orders/OrderBoard.jsx` | Tablero Kanban integrado con cobro de saldo en entrega |
+| `app/backend/app/cashbox/models.py` | Modelos ORM para `cash_movements`, `cash_income_categories`, `cash_expense_categories` |
+| `app/backend/app/cashbox/services.py` | Lógica de negocio financiero, balance dinámico y CRUD de categorías de caja; `add_movement` (sin commit) y `create_movement` |
+| `app/backend/app/cashbox/balance.py` | Única fuente del saldo pendiente de un pedido |
+| `app/backend/app/money.py` | Constantes y reglas puras de dinero |
+| `app/backend/app/cashbox/routes.py` | Endpoints REST de movimientos y categorías de caja |
+| `app/backend/app/settings/models.py` | Modelo con `currency_code` y `currency_symbol` |
+| `app/frontend/src/features/cashbox/cashboxApi.js` | Cliente Axios para servicios de caja y categorías |
+| `app/frontend/src/features/cashbox/CashboxView.jsx` | Vista de caja diaria y finanzas con métricas, tabla y carga dinámica de categorías |
+| `app/frontend/src/features/cashbox/CashboxSettingsView.jsx` | Vista dedicada de configuración y administración de categorías de caja |
+| `app/frontend/src/features/orders/OrderBoard.jsx` | Tablero Kanban integrado con cobro de saldo en entrega |
 
 ---
 

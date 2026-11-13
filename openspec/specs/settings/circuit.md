@@ -11,11 +11,11 @@
 
 | Entry Point | Trigger Mechanism | File:Line |
 |---|---|---|
-| `GET /api/settings` | HTTP GET (Obtener configuración del taller) | `backend/app/settings/routes.py:30` |
-| `PUT /api/settings` | HTTP PUT (Actualizar configuración del taller) | `backend/app/settings/routes.py:37` |
-| `GET /api/printers` | HTTP GET (Listar impresoras) | `backend/app/printers/routes.py:11` |
-| `POST /api/printers` | HTTP POST (Crear impresora) | `backend/app/printers/routes.py:23` |
-| `PUT /api/printers/<id>` | HTTP PUT (Actualizar impresora) | `backend/app/printers/routes.py:46` |
+| `GET /api/settings` | HTTP GET (Obtener configuración del taller) | `app/backend/app/settings/routes.py:30` |
+| `PUT /api/settings` | HTTP PUT (Actualizar configuración del taller) | `app/backend/app/settings/routes.py:37` |
+| `GET /api/printers` | HTTP GET (Listar impresoras) | `app/backend/app/printers/routes.py:11` |
+| `POST /api/printers` | HTTP POST (Crear impresora) | `app/backend/app/printers/routes.py:23` |
+| `PUT /api/printers/<id>` | HTTP PUT (Actualizar impresora) | `app/backend/app/printers/routes.py:46` |
 
 ---
 
@@ -52,11 +52,11 @@ POST /api/printers
 
 | File | Responsibility |
 |---|---|
-| `backend/app/settings/models.py` | Modelo `WorkshopSettings` con check constraints (1FN-4FN) |
-| `backend/app/settings/routes.py` | Blueprint `settings_bp` con validaciones de entrada |
-| `backend/app/printers/models.py` | Modelo `Printer` con check constraints y unicidad |
-| `backend/app/printers/routes.py` | Blueprint `printers_bp` con CRUD de impresoras |
-| `frontend/src/features/settings/WorkshopSettingsView.jsx` | Vista visual de gestión de constantes y tabla de impresoras |
-| `frontend/src/features/orders/ordersApi.js` | Clientes Axios para `settings` y `printers` |
-| `backend/migrations/versions/b7189c4d92ef_add_printers_and_workshop_settings.py` | Migración inicial de tablas |
-| `backend/migrations/versions/c83921af7b4e_add_labor_rate_and_time.py` | Migración de adición de tarifa horaria y tiempo en minutos |
+| `app/backend/app/settings/models.py` | Modelo `WorkshopSettings` con check constraints (1FN-4FN) |
+| `app/backend/app/settings/routes.py` | Blueprint `settings_bp` con validaciones de entrada |
+| `app/backend/app/printers/models.py` | Modelo `Printer` con check constraints y unicidad |
+| `app/backend/app/printers/routes.py` | Blueprint `printers_bp` con CRUD de impresoras |
+| `app/frontend/src/features/settings/WorkshopSettingsView.jsx` | Vista visual de gestión de constantes y tabla de impresoras |
+| `app/frontend/src/features/orders/ordersApi.js` | Clientes Axios para `settings` y `printers` |
+| `app/backend/migrations/versions/b7189c4d92ef_add_printers_and_workshop_settings.py` | Migración inicial de tablas |
+| `app/backend/migrations/versions/c83921af7b4e_add_labor_rate_and_time.py` | Migración de adición de tarifa horaria y tiempo en minutos |

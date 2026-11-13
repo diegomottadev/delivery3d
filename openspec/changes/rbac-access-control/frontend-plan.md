@@ -193,7 +193,7 @@ export const MENU_CONFIG = [
 ## 9. Estructura de archivos propuesta
 
 ```
-frontend/src/
+app/frontend/src/
 ├─ navigation/
 │  ├─ menuConfig.js                 # MENU_CONFIG + ROUTE_META (breadcrumb)
 │  ├─ buildMenu.js

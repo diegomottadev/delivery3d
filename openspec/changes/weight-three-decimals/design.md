@@ -1,12 +1,12 @@
 # Design: weight-three-decimals
 
 ## Involved Files (real paths)
-- `backend/app/orders/models.py`
-- `backend/migrations/versions/d9401ab23e7f_change_order_items_weight_precision_to_3_decimals.py`
-- `backend/migrations/schema_design_normalized.sql`
-- `backend/tests/orders/test_intake.py`
-- `frontend/src/features/orders/OrderIntakeForm.jsx`
-- `frontend/src/features/orders/OrderIntakeForm.test.js`
+- `app/backend/app/orders/models.py`
+- `app/backend/migrations/versions/d9401ab23e7f_change_order_items_weight_precision_to_3_decimals.py`
+- `app/backend/migrations/schema_design_normalized.sql`
+- `app/backend/tests/orders/test_intake.py`
+- `app/frontend/src/features/orders/OrderIntakeForm.jsx`
+- `app/frontend/src/features/orders/OrderIntakeForm.test.js`
 
 ## Technical Approach
 1. **Model & Database Precision:**
@@ -38,11 +38,11 @@ ALTER TABLE order_items MODIFY COLUMN weight_g DECIMAL(10, 3) NOT NULL;
 - [ ] **Modify** table `order_items`: columna `weight_g` pasa a `DECIMAL(10, 3)`.
 
 ### Backend
-- [ ] **Modify** `backend/app/orders/models.py`: `OrderItem.weight_g = db.Column(db.Numeric(10, 3), nullable=False)`.
+- [ ] **Modify** `app/backend/app/orders/models.py`: `OrderItem.weight_g = db.Column(db.Numeric(10, 3), nullable=False)`.
 
 ### Frontend
-- [ ] **Modify** `frontend/src/features/orders/OrderIntakeForm.jsx`: `maxFractionDigits={3}`, `min={0.001}`.
+- [ ] **Modify** `app/frontend/src/features/orders/OrderIntakeForm.jsx`: `maxFractionDigits={3}`, `min={0.001}`.
 
 ### Tests
-- [ ] **Modify** `backend/tests/orders/test_intake.py`: Test de persistencia de peso con 3 decimales (`12.345`).
-- [ ] **Modify** `frontend/src/features/orders/OrderIntakeForm.test.js`: Test de edición/ingreso con 3 decimales.
+- [ ] **Modify** `app/backend/tests/orders/test_intake.py`: Test de persistencia de peso con 3 decimales (`12.345`).
+- [ ] **Modify** `app/frontend/src/features/orders/OrderIntakeForm.test.js`: Test de edición/ingreso con 3 decimales.

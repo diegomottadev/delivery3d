@@ -1,6 +1,6 @@
 ---
 name: mysql-database
-description: Base de datos MySQL 8 de Delivery3D (Flask-SQLAlchemy + Alembic). Usar siempre que se toque el esquema o los datos — modelos en backend/app/*/models.py, migraciones en backend/migrations/versions/ (flask db migrate/upgrade/downgrade), CHECK/índices/FKs, seeds en backend/seeds/, SQL crudo, consultas a la base de desarrollo o diferencias entre los tests y la base real — aunque el pedido solo diga "agregá un campo", "nueva tabla", "renombrá la columna" o "¿por qué la base acepta esto?".
+description: Base de datos MySQL 8 de Delivery3D (Flask-SQLAlchemy + Alembic). Usar siempre que se toque el esquema o los datos — modelos en app/backend/app/*/models.py, migraciones en app/backend/migrations/versions/ (flask db migrate/upgrade/downgrade), CHECK/índices/FKs, seeds en app/backend/seeds/, SQL crudo, consultas a la base de desarrollo o diferencias entre los tests y la base real — aunque el pedido solo diga "agregá un campo", "nueva tabla", "renombrá la columna" o "¿por qué la base acepta esto?".
 ---
 
 # Base de datos — MySQL 8 (Delivery3D)
@@ -9,13 +9,13 @@ Para capas y estilo de código aplicá también **flask-backend-practices**. Est
 
 ## La trampa principal: los tests no usan las migraciones
 
-Los tests crean el esquema con `db.create_all()` (`backend/tests/conftest.py`); la base real, con Alembic. Si cambiás un modelo sin migración equivalente, **los tests pasan y la base real queda distinta**. Pasó: 6 CHECK vivieron solo en los modelos hasta `e5c1a7d93f20`.
+Los tests crean el esquema con `db.create_all()` (`app/backend/tests/conftest.py`); la base real, con Alembic. Si cambiás un modelo sin migración equivalente, **los tests pasan y la base real queda distinta**. Pasó: 6 CHECK vivieron solo en los modelos hasta `e5c1a7d93f20`.
 
 Por eso, todo cambio de esquema:
 1. Toca **modelo y migración juntos**, con los **mismos nombres** de constraints e índices.
 2. Se verifica contra una base migrada con las dos herramientas (Alembic no compara CHECK; la segunda sí):
    ```bash
-   cd backend && PYTHONPATH=. .venv/bin/flask db check && PYTHONPATH=. .venv/bin/python -m tools.schema_check
+   cd app/backend && PYTHONPATH=. .venv/bin/flask db check && PYTHONPATH=. .venv/bin/python -m tools.schema_check
    ```
    El CI lo corre sobre una base vacía (upgrade → check → downgrade → upgrade). Si no pudiste correrlo, decilo.
 
@@ -55,7 +55,7 @@ Un seed nuevo se escribe como `seeds/seed_rbac.py`: idempotente, con `--dry-run`
 
 ## Consultar la base sin exponer credenciales
 
-Nunca leas ni imprimas `backend/.env`. Para mirar la base de desarrollo, entrá por la app dentro del contenedor (solo lectura, salvo pedido explícito):
+Nunca leas ni imprimas `app/backend/.env`. Para mirar la base de desarrollo, entrá por la app dentro del contenedor (solo lectura, salvo pedido explícito):
 ```bash
 docker exec -w /app delivery3d-backend python -c "
 from app import create_app; from app.extensions import db

@@ -1,6 +1,6 @@
 # Delta Specification: order-intake
 
-> **Updated for the normalized schema** (see `design.md`'s superseded-schema notice). `POST /api/orders` now takes either `client_id` (existing client) or `client` (create new) plus an `items` array (one or more pieces, each referencing a `material_id`) — not a flat `customer_name`/`contact`/`piece_description` payload. All scenarios below match the actual implementation and passing test suite (`backend/tests/orders/test_intake.py`, 20 tests).
+> **Updated for the normalized schema** (see `design.md`'s superseded-schema notice). `POST /api/orders` now takes either `client_id` (existing client) or `client` (create new) plus an `items` array (one or more pieces, each referencing a `material_id`) — not a flat `customer_name`/`contact`/`piece_description` payload. All scenarios below match the actual implementation and passing test suite (`app/backend/tests/orders/test_intake.py`, 20 tests).
 
 ## ADDED Requirements
 
@@ -76,7 +76,7 @@ Unchanged.
 - [x] **Atomicity**
 
 ## Verified Against Real Tests
-Los 17 escenarios de "Manual Order Intake" + variantes están cubiertos por 20 tests reales en `backend/tests/orders/test_intake.py`, corriendo contra MySQL 8.0 real (no mocks). 100% cobertura de líneas en `app/orders/schemas.py`, `app/orders/services.py` (porción de intake), `app/orders/routes.py` (porción de intake).
+Los 17 escenarios de "Manual Order Intake" + variantes están cubiertos por 20 tests reales en `app/backend/tests/orders/test_intake.py`, corriendo contra MySQL 8.0 real (no mocks). 100% cobertura de líneas en `app/orders/schemas.py`, `app/orders/services.py` (porción de intake), `app/orders/routes.py` (porción de intake).
 
 ## Risks and Considerations (updated)
 - **Resolved from the original Red Cards:** la dependencia dura con `auth` se resolvió con la tabla `users` stub + seed. El límite de `piece_description` sigue sin definirse explícitamente a nivel de negocio (columna `TEXT`, sin validación de longitud) — se mantiene como decisión abierta.

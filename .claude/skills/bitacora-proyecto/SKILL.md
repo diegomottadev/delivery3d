@@ -53,7 +53,7 @@ Agregar al final de `$BITACORA/AAAA-MM-DD.md` (si es nuevo, empezar con `# Bitá
 **Objetivo**: <qué se buscaba>
 
 **Qué se hizo**
-- <cambio concreto> (`backend/app/...`, `frontend/src/...`)
+- <cambio concreto> (`app/backend/app/...`, `app/frontend/src/...`)
 
 **Decisiones**
 - <decisión> · por qué: <motivo> · alternativa descartada: <cuál y por qué>
@@ -77,9 +77,9 @@ Agregar al final de `$BITACORA/AAAA-MM-DD.md` (si es nuevo, empezar con `# Bitá
 
 Citar lo que se corrió realmente:
 
-- Backend: `cd backend && PYTHONPATH=. .venv/bin/pytest -q` y `.venv/bin/ruff check app/ tests/ seeds/`
+- Backend: `cd app/backend && PYTHONPATH=. .venv/bin/pytest -q` y `.venv/bin/ruff check app/ tests/ seeds/`
 - Migraciones: `PYTHONPATH=. .venv/bin/flask db upgrade` (aclarar si se aplicó en la base del contenedor)
-- Frontend: `cd frontend && npm test -- --watchAll=false` y, si aplica, `npm run build`
+- Frontend: `cd app/frontend && npm test -- --watchAll=false` y, si aplica, `npm run build`
 
 ### Relación con OpenSpec
 
@@ -94,7 +94,7 @@ Después de cada entrada, tocar solo lo que cambió:
 - **indice.md**: `- [AAAA-MM-DD](../AAAA-MM-DD.md): <temas>`. Una línea por día.
 - **decisiones.md**: `- AAAA-MM-DD · <decisión> · por qué: <motivo> · ref: <link>`. Si una reemplaza a otra, tachar la vieja (`~~...~~ reemplazada AAAA-MM-DD`), nunca borrarla.
 - **descartado.md**: `- AAAA-MM-DD · <enfoque> · por qué no: <motivo>`. Sirve para no volver a proponer lo mismo.
-- **regresiones.md**: una entrada por regresión con fecha, síntoma, causa, fix, prevención y `veces: N`. Si se repite (N ≥ 2), proponer convertir la prevención en algo ejecutable: un test en `backend/tests/`, un chequeo en CI (`.github/workflows/`) o un hook. Una vez hecho, anotarlo.
+- **regresiones.md**: una entrada por regresión con fecha, síntoma, causa, fix, prevención y `veces: N`. Si se repite (N ≥ 2), proponer convertir la prevención en algo ejecutable: un test en `app/backend/tests/`, un chequeo en CI (`.github/workflows/`) o un hook. Una vez hecho, anotarlo.
 - **resumen.md**: reescribirlo entero (no acumular). Se inyecta en cada sesión: **máximo ~40 líneas o 2500 caracteres**. Secciones:
   - Qué es y stack (2-3 líneas)
   - Estado actual (fases del scope, cambios OpenSpec en curso, ramas abiertas)
@@ -105,7 +105,7 @@ Después de cada entrada, tocar solo lo que cambió:
 
 ## Reglas
 
-- **Secretos**: nunca escribir valores de `backend/.env` (credenciales de MySQL, `JWT_SECRET_KEY`, `SEED_OPERATOR_PASSWORD`), tokens ni datos de clientes. Usar `[REDACTADO]`. El repo es público.
+- **Secretos**: nunca escribir valores de `app/backend/.env` (credenciales de MySQL, `JWT_SECRET_KEY`, `SEED_OPERATOR_PASSWORD`), tokens ni datos de clientes. Usar `[REDACTADO]`. El repo es público.
 - **Concreto**: rutas reales, comandos, mensajes de error, nombres de tests.
 - **No inventar justificaciones**: si el motivo no quedó claro, poner "motivo no explicitado" o preguntar.
 - **No reescribir el pasado**: las entradas de días anteriores no se editan. Las correcciones van en una entrada nueva que las referencie.

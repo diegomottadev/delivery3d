@@ -4,7 +4,7 @@
 - **Reference Ticket / Issue:** n/a (pedido directo del usuario, trabajo por etapas)
 
 ## Why
-Hoy la autorización de Delivery3D es binaria: cualquier usuario autenticado y activo puede hacer **todo**. Existe `users.role` (`'admin'` / `'operator'`) y un decorador `roles_required(*roles)` en `backend/app/auth/security.py`, pero **ninguna ruta lo usa**: todas las rutas de `orders`, `cashbox`, `printers`, `settings`, `materials` y `filaments` llevan solo `@login_required`. Consecuencias concretas:
+Hoy la autorización de Delivery3D es binaria: cualquier usuario autenticado y activo puede hacer **todo**. Existe `users.role` (`'admin'` / `'operator'`) y un decorador `roles_required(*roles)` en `app/backend/app/auth/security.py`, pero **ninguna ruta lo usa**: todas las rutas de `orders`, `cashbox`, `printers`, `settings`, `materials` y `filaments` llevan solo `@login_required`. Consecuencias concretas:
 
 - Cualquier operador puede borrar pedidos en cualquier estado (`DELETE /api/orders/<id>`, spec `openspec/archive/2026-09-18-order-deletion/spec-delta.md`), registrar egresos de caja, cambiar la configuración del taller (costo kWh, margen) o editar impresoras.
 - No hay forma de dar a un usuario un acceso parcial (ej. "solo ve y cotiza pedidos, no toca caja") sin tocar código.
@@ -15,7 +15,7 @@ Si no hacemos nada, al sumar un segundo operador (o un ayudante) la única opci�
 ## What Changes
 Se reemplaza el control por `users.role` por un **RBAC mixto** resuelto en cada request contra la base:
 
-- Los **permisos** (`recurso:acción`) son un catálogo definido en código (`backend/app/rbac/constants.py`, `class Perm(StrEnum)` + `PERM_DESCRIPTIONS`) y sincronizado a la tabla `permissions` por seed. No se crean desde UI/API.
+- Los **permisos** (`recurso:acción`) son un catálogo definido en código (`app/backend/app/rbac/constants.py`, `class Perm(StrEnum)` + `PERM_DESCRIPTIONS`) y sincronizado a la tabla `permissions` por seed. No se crean desde UI/API.
 - Los permisos **nunca** se asignan a usuarios: pertenecen a **roles** (`role_permissions`).
 - Un usuario obtiene roles por dos caminos: **grupos** (`user_groups` → `groups` → `group_roles`) y **asignación directa** (`user_roles`, pensada para excepciones, con `reason` obligatorio y auditoría).
 - Permisos efectivos = unión de ambos caminos. Solo suman; sin denegaciones, sin jerarquía de roles, sin comodines.
@@ -27,12 +27,12 @@ Se reemplaza el control por `users.role` por un **RBAC mixto** resuelto en cada 
 | # | Etapa | Entregable |
 |---|---|---|
 | 1 | Modelo | `design.md` con diagrama ER de las 8 tablas, conflictos y preguntas (este documento + design). Sin código. |
-| 2 | Migración | Modelos SQLAlchemy en `backend/app/rbac/models.py` + migración Alembic aditiva (tablas nuevas, `users.is_superuser`, `users.updated_at` si se aprueba) + migración de datos de `users.role`. |
-| 3 | Catálogo y seed | `backend/app/rbac/constants.py` (`Perm`, `PERM_DESCRIPTIONS`) y `seeds/seed_permissions.py` idempotente (+ roles/grupos iniciales si se aprueban). |
-| 4 | Tests en rojo | `backend/tests/rbac/`: resolución de permisos (grupo, directo, unión, superuser, inactivo), decorador 401/403, cache por request, convenciones del catálogo. |
-| 5 | Implementación | `backend/app/rbac/services.py` (`get_user_permissions`), `permission_required(*perms)` y aplicación de `Perm.X` en todos los blueprints existentes. |
+| 2 | Migración | Modelos SQLAlchemy en `app/backend/app/rbac/models.py` + migración Alembic aditiva (tablas nuevas, `users.is_superuser`, `users.updated_at` si se aprueba) + migración de datos de `users.role`. |
+| 3 | Catálogo y seed | `app/backend/app/rbac/constants.py` (`Perm`, `PERM_DESCRIPTIONS`) y `seeds/seed_permissions.py` idempotente (+ roles/grupos iniciales si se aprueban). |
+| 4 | Tests en rojo | `app/backend/tests/rbac/`: resolución de permisos (grupo, directo, unión, superuser, inactivo), decorador 401/403, cache por request, convenciones del catálogo. |
+| 5 | Implementación | `app/backend/app/rbac/services.py` (`get_user_permissions`), `permission_required(*perms)` y aplicación de `Perm.X` en todos los blueprints existentes. |
 | 6 | Endpoints de administración | Blueprint `/api/rbac`: CRUD de roles y grupos, membresías, asignaciones directas, lectura del catálogo de permisos, `GET /api/rbac/users/<id>/access` con el origen de cada rol. Todo con `Perm.RBAC_MANAGE`; nadie se asigna roles ni grupos a sí mismo. |
-| 7 | Frontend | `frontend/src/features/rbac/`: pantallas de roles, grupos y accesos de usuario; ocultar acciones sin permiso (ej. botón de borrar pedido); consumir la lista de permisos efectivos del usuario actual. |
+| 7 | Frontend | `app/frontend/src/features/rbac/`: pantallas de roles, grupos y accesos de usuario; ocultar acciones sin permiso (ej. botón de borrar pedido); consumir la lista de permisos efectivos del usuario actual. |
 
 ## Capabilities
 - **New capabilities:**

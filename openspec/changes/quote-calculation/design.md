@@ -3,11 +3,11 @@
 > **Superseded schema notice:** igual que `order-intake`, este change se rediseñó sobre el esquema normalizado a mitad de implementación. `production_cost`/`suggested_sale_price` **NO son columnas** (3FN) — se calculan on-read. La cotización ahora es multi-ítem/multi-material (cada `OrderItem` puede tener un `Material` con `cost_per_kg` distinto), no un único `filament_cost_per_kg` a nivel pedido.
 
 ## Involved Files (real paths — implementados)
-- `backend/app/orders/models.py` — agrega `OrderQuote` (1:1 con `Order` vía `order_id UNIQUE`; parámetros de costo del taller + `informed_price`/`quoted_at`; **sin** columnas de costo calculado).
-- `backend/app/orders/pricing.py` — `compute_quote(items, quote_vars) -> QuoteResult`, función pura, agrega costo de filamento **por ítem** (cada uno con su propio `material_cost_per_kg`) y tiempo total; redondeo `round-half-up` por componente con `Decimal`.
-- `backend/app/orders/services.py` — `calculate_quote(order_id, quote_vars)`, `confirm_quote(order_id, informed_price, changed_by)`, `get_order_pricing(order)` (cálculo on-read para serialización), `_pricing_items(order)` (helper compartido).
-- `backend/app/orders/routes.py` — agrega `POST /api/orders/<order_id>/quote`, `POST /api/orders/<order_id>/quote/confirm`.
-- `backend/tests/orders/test_pricing.py` (16 tests, unitarios sobre `compute_quote`) y `test_quote_calculation.py` (15 tests, integración HTTP).
+- `app/backend/app/orders/models.py` — agrega `OrderQuote` (1:1 con `Order` vía `order_id UNIQUE`; parámetros de costo del taller + `informed_price`/`quoted_at`; **sin** columnas de costo calculado).
+- `app/backend/app/orders/pricing.py` — `compute_quote(items, quote_vars) -> QuoteResult`, función pura, agrega costo de filamento **por ítem** (cada uno con su propio `material_cost_per_kg`) y tiempo total; redondeo `round-half-up` por componente con `Decimal`.
+- `app/backend/app/orders/services.py` — `calculate_quote(order_id, quote_vars)`, `confirm_quote(order_id, informed_price, changed_by)`, `get_order_pricing(order)` (cálculo on-read para serialización), `_pricing_items(order)` (helper compartido).
+- `app/backend/app/orders/routes.py` — agrega `POST /api/orders/<order_id>/quote`, `POST /api/orders/<order_id>/quote/confirm`.
+- `app/backend/tests/orders/test_pricing.py` (16 tests, unitarios sobre `compute_quote`) y `test_quote_calculation.py` (15 tests, integración HTTP).
 
 ## Technical Approach
 `compute_quote(items, quote_vars)` recibe:

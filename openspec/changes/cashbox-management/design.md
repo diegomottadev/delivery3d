@@ -1,24 +1,24 @@
 # Design: cashbox-management
 
 ## Involved Files (real paths)
-- `backend/app/cashbox/models.py`
-- `backend/app/cashbox/services.py`
-- `backend/app/cashbox/routes.py`
-- `backend/app/cashbox/schemas.py`
-- `backend/app/settings/models.py`
-- `backend/app/settings/routes.py`
-- `backend/app/orders/services.py`
-- `backend/app/orders/routes.py`
-- `backend/app/__init__.py`
-- `backend/migrations/versions/...`
-- `backend/tests/cashbox/test_services.py`
-- `backend/tests/cashbox/test_routes.py`
-- `frontend/src/features/cashbox/cashboxApi.js`
-- `frontend/src/features/cashbox/CashboxView.jsx`
-- `frontend/src/features/cashbox/CashboxView.test.js`
-- `frontend/src/features/settings/WorkshopSettingsView.jsx`
-- `frontend/src/features/orders/OrderBoard.jsx`
-- `frontend/src/App.js`
+- `app/backend/app/cashbox/models.py`
+- `app/backend/app/cashbox/services.py`
+- `app/backend/app/cashbox/routes.py`
+- `app/backend/app/cashbox/schemas.py`
+- `app/backend/app/settings/models.py`
+- `app/backend/app/settings/routes.py`
+- `app/backend/app/orders/services.py`
+- `app/backend/app/orders/routes.py`
+- `app/backend/app/__init__.py`
+- `app/backend/migrations/versions/...`
+- `app/backend/tests/cashbox/test_services.py`
+- `app/backend/tests/cashbox/test_routes.py`
+- `app/frontend/src/features/cashbox/cashboxApi.js`
+- `app/frontend/src/features/cashbox/CashboxView.jsx`
+- `app/frontend/src/features/cashbox/CashboxView.test.js`
+- `app/frontend/src/features/settings/WorkshopSettingsView.jsx`
+- `app/frontend/src/features/orders/OrderBoard.jsx`
+- `app/frontend/src/App.js`
 
 ## Technical Approach
 1. **Normalización y Balance Dinámico (3FN):**
@@ -70,7 +70,7 @@
 - Validación estricta de payloads: montos mayores a cero, validación de tipos numéricos y prevención de inyecciones o montos negativos en egresos (el egreso se registra con monto positivo y tipo `'egreso'`).
 
 ## ⚠️ High-Risk Files / Modules
-- Módulo financiero (`backend/app/cashbox/`): impacto directo en la exactitud del dinero del taller. Cobertura de tests requerida del 100%.
+- Módulo financiero (`app/backend/app/cashbox/`): impacto directo en la exactitud del dinero del taller. Cobertura de tests requerida del 100%.
 - Migración de base de datos en tablas existentes `cash_movements` y `workshop_settings`.
 
 ## Impact on Data / Integraciones

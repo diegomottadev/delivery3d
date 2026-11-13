@@ -13,38 +13,38 @@ Sistema de Gestión de Pedidos y Caja para Taller de Impresión 3D (Bambu Lab A1
 ### Backend (`backend/`)
 - Run development server:
   ```bash
-  cd backend && PYTHONPATH=. .venv/bin/flask run
+  cd app/backend && PYTHONPATH=. .venv/bin/flask run
   ```
 - Run tests:
   ```bash
-  cd backend && PYTHONPATH=. .venv/bin/pytest -v
+  cd app/backend && PYTHONPATH=. .venv/bin/pytest -v
   ```
 - Run linter:
   ```bash
-  cd backend && .venv/bin/ruff check app/ tests/ seeds/
+  cd app/backend && .venv/bin/ruff check app/ tests/ seeds/
   ```
 - Run migrations:
   ```bash
-  cd backend && PYTHONPATH=. .venv/bin/flask db upgrade
+  cd app/backend && PYTHONPATH=. .venv/bin/flask db upgrade
   ```
 - Seed initial data:
   ```bash
-  cd backend && PYTHONPATH=. .venv/bin/python -m seeds.seed_operator
-  cd backend && PYTHONPATH=. .venv/bin/python -m seeds.seed_materials
+  cd app/backend && PYTHONPATH=. .venv/bin/python -m seeds.seed_operator
+  cd app/backend && PYTHONPATH=. .venv/bin/python -m seeds.seed_materials
   ```
 
 ### Frontend (`frontend/`)
 - Run development server:
   ```bash
-  cd frontend && npm start
+  cd app/frontend && npm start
   ```
 - Run tests:
   ```bash
-  cd frontend && npm test -- --watchAll=false
+  cd app/frontend && npm test -- --watchAll=false
   ```
 - Production build:
   ```bash
-  cd frontend && npm run build
+  cd app/frontend && npm run build
   ```
 
 ## Development & Workflow Rules (Workflow SSD)

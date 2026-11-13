@@ -1,7 +1,7 @@
 # Change Proposal: auth-security-owasp
 
 ## 1. Context & Motivation
-Actualmente en Delivery3D, el módulo de autenticación funciona con un guardia temporal (`login_required` en `backend/app/auth/security.py`) que decodifica cualquier JWT sin verificar la existencia ni estado activo del usuario en la base de datos, recurriendo a un operador ficticio `sub="1"`, con contraseñas en estado `"unset"`. El frontend utiliza un token estático (`DEFAULT_DEV_TOKEN`) en `localStorage`.
+Actualmente en Delivery3D, el módulo de autenticación funciona con un guardia temporal (`login_required` en `app/backend/app/auth/security.py`) que decodifica cualquier JWT sin verificar la existencia ni estado activo del usuario en la base de datos, recurriendo a un operador ficticio `sub="1"`, con contraseñas en estado `"unset"`. El frontend utiliza un token estático (`DEFAULT_DEV_TOKEN`) en `localStorage`.
 
 Para cumplir con los estándares de la industria, las directrices del libro **"API Security in Action" (Neil Madden)** y el **OWASP API Security Top 10**, se debe implementar un sistema completo y robusto de autenticación y autorización que mitigue:
 - **BOLA (Broken Object Level Authorization / API1:2023):** Validar la pertenencia y contexto de las entidades asignando siempre la identidad comprobada del token.

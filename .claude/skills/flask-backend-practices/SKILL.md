@@ -1,23 +1,23 @@
 ---
 name: flask-backend-practices
-description: Buenas prácticas para el backend Flask de Delivery3D (backend/app). Usar siempre que se cree, modifique, revise o refactorice código Python del backend — blueprints/routes.py, services.py, models.py (Flask-SQLAlchemy), schemas.py de validación, pricing/state machine, dinero con Decimal, migraciones Alembic (flask db) o tests pytest — aunque el pedido no diga "buenas prácticas": agregar un endpoint, un campo, una tabla, arreglar un bug del backend o "revisá este módulo" también aplican.
+description: Buenas prácticas para el backend Flask de Delivery3D (app/backend/app). Usar siempre que se cree, modifique, revise o refactorice código Python del backend — blueprints/routes.py, services.py, models.py (Flask-SQLAlchemy), schemas.py de validación, pricing/state machine, dinero con Decimal, migraciones Alembic (flask db) o tests pytest — aunque el pedido no diga "buenas prácticas": agregar un endpoint, un campo, una tabla, arreglar un bug del backend o "revisá este módulo" también aplican.
 ---
 
 # Buenas prácticas backend — Flask (Delivery3D)
 
-El código del repo ya muestra cómo se trabaja: tomá `app/orders/` como módulo de referencia (routes → schemas → services → models) y `backend/tests/conftest.py` para los fixtures. Este skill cubre lo que el código **no** muestra. Para seguridad, aplicá también **owasp-security**.
+El código del repo ya muestra cómo se trabaja: tomá `app/orders/` como módulo de referencia (routes → schemas → services → models) y `app/backend/tests/conftest.py` para los fixtures. Este skill cubre lo que el código **no** muestra. Para seguridad, aplicá también **owasp-security**.
 
 ## Reglas que el código no te va a decir
 
 1. **Una spec aprobada manda sobre tu criterio.** Antes de cambiar un comportamiento, buscá en `openspec/specs/<dominio>/` y `openspec/archive/*/spec-delta.md`. Si tu cambio la contradice, frená y preguntá: lo que parece un bug puede ser una decisión del negocio protegida por tests (pasó con el borrado de pedidos en cualquier estado).
 2. **Nunca borres, debilites ni saltees un test para que la suite pase.** Si un test parece incorrecto, avisá: suele estar protegiendo una spec.
 3. **Esquema, migraciones y seeds: aplicá el skill `mysql-database`.** Todo cambio de modelo lleva su migración con los mismos nombres de constraints: los tests usan `create_all` y no detectan una migración faltante.
-4. **Cambio de contrato JSON = cambio en el frontend.** Si renombrás o quitás una clave de respuesta, nombrá los archivos de `frontend/src/features/` afectados y preguntá si hay que aceptar ambas claves por compatibilidad.
+4. **Cambio de contrato JSON = cambio en el frontend.** Si renombrás o quitás una clave de respuesta, nombrá los archivos de `app/frontend/src/features/` afectados y preguntá si hay que aceptar ambas claves por compatibilidad.
 5. **Sin dependencias nuevas sin avisar.** El proyecto valida a mano en `schemas.py` a propósito: no sumes Pydantic, marshmallow ni similares.
 6. **Errores:** los services lanzan excepciones de dominio con nombre (nunca `ValueError` genérico ni status HTTP); el route las traduce. Nunca `jsonify(error=str(exc)), 500`: lo no controlado va al handler global de `app/__init__.py`.
 7. **Dinero:** `Decimal(str(x))`, `quantize(CENT, ROUND_HALF_UP)`, columnas `Numeric(10, 2)`; `float` solo al serializar.
 8. **No refactorices por tu cuenta** la API pública, el schema de BD ni módulos sin tests: proponelo y esperá confirmación.
-9. **No reportes éxito sin la prueba:** salida de `cd backend && PYTHONPATH=. .venv/bin/pytest -q && .venv/bin/ruff check app/ tests/ seeds/`. Si no pudiste correr algo, decilo.
+9. **No reportes éxito sin la prueba:** salida de `cd app/backend && PYTHONPATH=. .venv/bin/pytest -q && .venv/bin/ruff check app/ tests/ seeds/`. Si no pudiste correr algo, decilo.
 
 ## Qué va en cada capa (para revisar)
 
@@ -42,6 +42,6 @@ Por cada hallazgo, una fila. Formato fijo:
 
 | # | Categoría | Archivo:línea | Problema | Principio | Refactor mínimo |
 |---|---|---|---|---|---|
-| 1 | Capas | `backend/app/<módulo>/routes.py:<desde>-<hasta>` | La ruta valida a mano, instancia el modelo y hace `commit()` | Routes sin ORM (SRP) | Extract Function `validate_<entidad>` → `schemas.py`, `create_<entidad>` → `services.py` |
+| 1 | Capas | `app/backend/app/<módulo>/routes.py:<desde>-<hasta>` | La ruta valida a mano, instancia el modelo y hace `commit()` | Routes sin ORM (SRP) | Extract Function `validate_<entidad>` → `schemas.py`, `create_<entidad>` → `services.py` |
 
 El refactor mínimo nombra el patrón (Extract/Move Function…) y las funciones concretas. Si no hay hallazgos en una categoría, decilo con lo que verificaste.

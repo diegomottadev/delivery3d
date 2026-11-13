@@ -24,19 +24,19 @@ Decisiones adicionales acordadas con el plan de frontend (`frontend-plan.md`):
 - **No** hay bloqueo `LAST_ADMIN` (lo cubre el superusuario).
 - Listado de usuarios sin paginación.
 - Acceso efectivo: `GET /api/rbac/users/<id>/access` (no `/effective-access`).
-- Habrá un test backend que compare `frontend/src/features/security/permissions/perms.js` con el enum `Perm` (etapa 3 o 4). Formato acordado: una entrada por línea dentro de `export const PERM = Object.freeze({ ... })`, `NOMBRE_MIEMBRO: 'recurso:acción',`, con nombres iguales a los miembros del enum Python.
+- Habrá un test backend que compare `app/frontend/src/features/security/permissions/perms.js` con el enum `Perm` (etapa 3 o 4). Formato acordado: una entrada por línea dentro de `export const PERM = Object.freeze({ ... })`, `NOMBRE_MIEMBRO: 'recurso:acción',`, con nombres iguales a los miembros del enum Python.
 - `GET /api/auth/me/permissions` es contrato **fijo** (el frontend ya lo consume): ver `api-contract.md` §1.
 - `orders:read` existe en el catálogo (etapa 3); los recursos usan el nombre del endpoint en inglés (`orders`, no `ordenes`).
 
 ## Etapa 2 — Migración (hecho)
 
-- `backend/app/auth/models.py`: `User.is_superuser` (`BOOL NOT NULL DEFAULT 0`), `User.updated_at` (`DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP`, `onupdate`). `role` marcada deprecada en comentario; `to_dict()` sin cambios.
-- `backend/app/rbac/__init__.py`, `backend/app/rbac/models.py`: `Group`, `Role`, `Permission`, `UserGroup`, `GroupRole`, `UserRole`, `RolePermission`. Sin relationships ORM todavía (se agregan en etapa 5 si las consultas lo requieren).
-- `backend/app/__init__.py`: importa `app.rbac.models` (necesario para `create_all` y autogenerate).
-- `backend/migrations/versions/44a4db68ccde_add_rbac_tables.py` (`down_revision = c8c9b0e3a953`): escrita a mano (no autogenerate, para no conectar a la base real). Incluye backfill `is_superuser` y `updated_at`. Downgrade: `DROP TABLE` en orden inverso + `drop_column` de las 2 columnas de `users` (los índices caen con la tabla; dropearlos antes fallaría porque MySQL los exige para las FK).
+- `app/backend/app/auth/models.py`: `User.is_superuser` (`BOOL NOT NULL DEFAULT 0`), `User.updated_at` (`DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP`, `onupdate`). `role` marcada deprecada en comentario; `to_dict()` sin cambios.
+- `app/backend/app/rbac/__init__.py`, `app/backend/app/rbac/models.py`: `Group`, `Role`, `Permission`, `UserGroup`, `GroupRole`, `UserRole`, `RolePermission`. Sin relationships ORM todavía (se agregan en etapa 5 si las consultas lo requieren).
+- `app/backend/app/__init__.py`: importa `app.rbac.models` (necesario para `create_all` y autogenerate).
+- `app/backend/migrations/versions/44a4db68ccde_add_rbac_tables.py` (`down_revision = c8c9b0e3a953`): escrita a mano (no autogenerate, para no conectar a la base real). Incluye backfill `is_superuser` y `updated_at`. Downgrade: `DROP TABLE` en orden inverso + `drop_column` de las 2 columnas de `users` (los índices caen con la tabla; dropearlos antes fallaría porque MySQL los exige para las FK).
 - Paridad modelo ↔ migración verificada compilando el DDL de los modelos con el dialecto MySQL: mismos nombres de FK (`fk_<tabla>_<col>`), `ondelete`, UNIQUE, CHECK, índices y `server_default`.
 - Timestamps nuevos con `server_default CURRENT_TIMESTAMP` además del default Python, para que filas insertadas por SQL crudo (seed/migración) no fallen.
-- `backend/tests/conftest.py`: usuario id=1 con `is_superuser=True`; `_clean_tables` trunca las 7 tablas nuevas y usa backticks en todos los `TRUNCATE`.
+- `app/backend/tests/conftest.py`: usuario id=1 con `is_superuser=True`; `_clean_tables` trunca las 7 tablas nuevas y usa backticks en todos los `TRUNCATE`.
 - SQL offline generado y revisado (sin aplicar): `flask db upgrade c8c9b0e3a953:44a4db68ccde --sql` y `flask db downgrade 44a4db68ccde:c8c9b0e3a953 --sql`. Contiene 2 CHECK, 16 índices secundarios, 20 FK con `ON DELETE` explícito y los 2 `UPDATE users` de backfill.
 - Suite completa con modelos nuevos sobre la base de test: **234 passed** (verificado en el worktree `feat/rbac`).
 - ⚠️ **Despliegue:** el contenedor `delivery3d-backend` monta el repo en vivo. Cambiar `User` sin aplicar la migración rompe el login (`Unknown column users.is_superuser`). Por eso el trabajo vive en el worktree `.worktrees/rbac` (rama `feat/rbac`) y el orden de despliegue es: **primero `flask db upgrade`, después el código**.
@@ -124,8 +124,8 @@ Miembro del enum = `RESOURCE_ACTION` en mayúsculas (`Perm.ORDERS_READ = "orders
 20 permisos: todo el catálogo **menos `orders:delete` y `rbac:manage`**, y en esta propuesta también **menos `rbac:read`** (no es un permiso de negocio). Queda: los 1–3 y 5–20 de la tabla.
 Constante en código: `OPERATOR_ROLE_PERMS: frozenset[Perm]`, definida como `set(Perm) - {ORDERS_DELETE, RBAC_READ, RBAC_MANAGE}`, para que un permiso de negocio nuevo entre solo en el rol al re-crearlo (ver seed).
 
-### Diseño del seed (`backend/seeds/seed_rbac.py`, sin escribir todavía)
-La lógica vive en `backend/app/rbac/services.py` (`sync_permission_catalog()`, `bootstrap_operator_group()`), así los tests la llaman directo sobre `create_all`. El script de `seeds/` es un wrapper delgado, igual que `seed_operator.py`.
+### Diseño del seed (`app/backend/seeds/seed_rbac.py`, sin escribir todavía)
+La lógica vive en `app/backend/app/rbac/services.py` (`sync_permission_catalog()`, `bootstrap_operator_group()`), así los tests la llaman directo sobre `create_all`. El script de `seeds/` es un wrapper delgado, igual que `seed_operator.py`.
 
 1. **Catálogo (upsert por `code`), en una transacción:**
    - Por cada miembro de `Perm`: si el `code` no existe → `INSERT` (`resource`/`action` salen de `code.split(":")`, más la descripción de `PERM_DESCRIPTIONS`).
@@ -144,8 +144,8 @@ La lógica vive en `backend/app/rbac/services.py` (`sync_permission_catalog()`, 
 5. **`--dry-run`:** ejecuta todo, imprime el reporte y hace `rollback()` en lugar de `commit()`.
 6. **Cómo se corre:**
    ```bash
-   cd backend && PYTHONPATH=. .venv/bin/python -m seeds.seed_rbac --dry-run   # revisar
-   cd backend && PYTHONPATH=. .venv/bin/python -m seeds.seed_rbac             # aplicar
+   cd app/backend && PYTHONPATH=. .venv/bin/python -m seeds.seed_rbac --dry-run   # revisar
+   cd app/backend && PYTHONPATH=. .venv/bin/python -m seeds.seed_rbac             # aplicar
    ```
    Orden en un entorno nuevo: `flask db upgrade` → `seeds.seed_operator` → `seeds.seed_rbac`. Re-correrlo es seguro: idempotente.
 7. **Ajuste a `seeds/seed_operator.py`:** además de `role="admin"`, setear `is_superuser=True`. Si no, un entorno nuevo creado después de la migración queda sin superusuario, porque el backfill de la migración ya corrió.
@@ -156,7 +156,7 @@ La lógica vive en `backend/app/rbac/services.py` (`sync_permission_catalog()`, 
 - No hay comodines (`*`) ni acciones fuera de `read/create/update/delete` + lista blanca de acciones de negocio (`quote`, `approve`, `produce`, `deliver`, `manage`).
 - `OPERATOR_ROLE_PERMS` no contiene `orders:delete`, `rbac:manage` ni `rbac:read`.
 - Seed: idempotencia (2 corridas = mismo estado), descripción actualizada, huérfano listado y no borrado, rol existente no modificado, membresía inicial solo de `role='operator'`.
-- Sincronía con `frontend/src/features/security/permissions/perms.js` (formato acordado en `api-contract.md` §7). Si el archivo no existe, el test **falla** (es un monorepo).
+- Sincronía con `app/frontend/src/features/security/permissions/perms.js` (formato acordado en `api-contract.md` §7). Si el archivo no existe, el test **falla** (es un monorepo).
 
 ### Preguntas de la etapa 3
 - **E3-1:** ¿`cash_movements` / `cash_categories` como recursos de `/api/cashbox/...`? Alternativa: `movements` / `categories` a secas (más pegado al path, pero ambiguo).
@@ -176,7 +176,7 @@ La lógica vive en `backend/app/rbac/services.py` (`sync_permission_catalog()`, 
 | E3-4 | El Operador **no** cambia precios ni configuración: se le sacan `settings:update`, `printers:create`, `printers:update`, `cash_categories:create`, `cash_categories:update`. Elegir la impresora de cada pedido ya está cubierto por `orders:quote` + `printers:read`. La impresora por defecto del taller (`default_printer_id` en `PUT /api/settings`) queda bajo `settings:update`; no se crea un permiso nuevo. |
 | E3-5 | Se queda `orders:produce`. |
 
-### Catálogo final: 22 permisos (`backend/app/rbac/constants.py`)
+### Catálogo final: 22 permisos (`app/backend/app/rbac/constants.py`)
 Es la tabla de "Etapa 3 — propuesta de catálogo", sin cambios de códigos. Solo se ajustaron dos descripciones:
 - `orders:quote`: "… (incluye elegir la impresora)".
 - `settings:update`: "… (costos, margen, moneda, impresora por defecto)".
@@ -187,19 +187,19 @@ Es la tabla de "Etapa 3 — propuesta de catálogo", sin cambios de códigos. So
 Se define como `frozenset` literal, no como "todo menos…": un permiso nuevo **no** se suma solo.
 
 ### Verificación del flujo de presupuesto (E3-4)
-- `POST /api/orders/<id>/quote` → `calculate_quote()` guarda `quote_vars["printer_id"]` en `order_quotes.printer_id` (`backend/app/orders/services.py:238`).
+- `POST /api/orders/<id>/quote` → `calculate_quote()` guarda `quote_vars["printer_id"]` en `order_quotes.printer_id` (`app/backend/app/orders/services.py:238`).
 - Con `orders:quote` + `printers:read` (para listar impresoras), el operador elige la impresora del pedido. ✅
 - ⚠️ **Hallazgo:** el mismo `quote_vars` también acepta del cliente `kwh_cost`, `machine_power_watts`, `machine_cost_per_hour` y `profit_margin_pct` / `profit_multiplier`. Además, `quote/confirm` recibe `informed_price`. O sea, **quien tiene `orders:quote` fija el margen y el precio final de ese pedido**, aunque no pueda tocar la configuración global. Ver pregunta E3-6.
 
 ### Implementación
-- `backend/app/rbac/constants.py`: contiene `Perm` (`StrEnum`, 22 miembros, propiedades `.resource` y `.action`), `PERM_DESCRIPTIONS`, `RESOURCE_LABELS`, los nombres y descripciones del rol y del grupo, y `OPERATOR_ROLE_PERMS`.
-- `backend/app/rbac/services.py`:
+- `app/backend/app/rbac/constants.py`: contiene `Perm` (`StrEnum`, 22 miembros, propiedades `.resource` y `.action`), `PERM_DESCRIPTIONS`, `RESOURCE_LABELS`, los nombres y descripciones del rol y del grupo, y `OPERATOR_ROLE_PERMS`.
+- `app/backend/app/rbac/services.py`:
   - `sync_permission_catalog()` y `bootstrap_operator_group()` hacen solo `flush`.
   - `seed_rbac(dry_run=False)` envuelve ambas en una transacción: `commit`, o `rollback` si es dry-run o hay un error.
   - Los reportes son dataclasses: `SeedReport`, `CatalogSyncReport` (con `OrphanPermission`) y `OperatorBootstrapReport`.
-- `backend/seeds/seed_rbac.py`: wrapper con `--dry-run` y `--strict` (exit 1 si hay huérfanos).
-- `backend/seeds/seed_operator.py`: el usuario id=1 queda con `is_superuser=True`, tanto al crearlo como al actualizarlo.
-- Tests (`backend/tests/rbac/`):
+- `app/backend/seeds/seed_rbac.py`: wrapper con `--dry-run` y `--strict` (exit 1 si hay huérfanos).
+- `app/backend/seeds/seed_operator.py`: el usuario id=1 queda con `is_superuser=True`, tanto al crearlo como al actualizarlo.
+- Tests (`app/backend/tests/rbac/`):
   - `test_rbac_catalog.py` (9): lógica pura.
   - `test_rbac_seed.py` (10): contra `delivery3d_test`.
 - **Diferido a etapa 4:** el test de sincronía con `perms.js`. Hoy el frontend tiene 3 miembros; agregarlo ahora deja la suite en rojo hasta que el frontend se actualice.
@@ -257,7 +257,7 @@ Con `settings:update`, el body se respeta completo.
 ### Archivos
 | Archivo | Tests | Qué cubre |
 |---|---|---|
-| `backend/tests/rbac/conftest.py` | — | `RbacFactory` (usuarios, roles, grupos y asignaciones de prueba; nunca usa el id=1). `guarded_app`: una app aparte con un blueprint `/_test/rbac/*` protegido, para no proteger todavía las rutas reales. |
+| `app/backend/tests/rbac/conftest.py` | — | `RbacFactory` (usuarios, roles, grupos y asignaciones de prueba; nunca usa el id=1). `guarded_app`: una app aparte con un blueprint `/_test/rbac/*` protegido, para no proteger todavía las rutas reales. |
 | `test_rbac_effective_permissions.py` | 8 | Resolución de permisos. |
 | `test_rbac_permission_required.py` | 14 | El decorador y el cache. |
 | `test_rbac_me_permissions.py` | 5 | `GET /api/auth/me/permissions`. |
@@ -267,34 +267,34 @@ Con `settings:update`, el body se respeta completo.
 ## Etapa 5 — implementación (HECHO)
 
 ### Código
-- **`backend/app/rbac/services.py`:** se agregó `get_effective_permissions(user_id)`. Resuelve los permisos con una sola consulta `UNION`: grupo → roles → permisos, más roles directos → permisos.
-- **`backend/app/rbac/security.py`** (nuevo):
+- **`app/backend/app/rbac/services.py`:** se agregó `get_effective_permissions(user_id)`. Resuelve los permisos con una sola consulta `UNION`: grupo → roles → permisos, más roles directos → permisos.
+- **`app/backend/app/rbac/security.py`** (nuevo):
   - `get_user_permissions()` cachea el resultado en `g`. El cache está atado al request actual y al `user_id`, así que nunca se reusa en otro request aunque se comparta el app context. Para un superusuario devuelve `ALL_PERMISSION_CODES`.
   - `has_permission(perm)`.
   - `permission_required(*perms)`:
     - Envuelve `login_required` y exige todos los permisos (AND).
     - Si falta alguno → 403 `{"error", "code": "FORBIDDEN"}`.
     - Falla al importar el módulo si recibe un string o ningún permiso: solo acepta miembros de `Perm`.
-- **`backend/app/auth/routes.py`:** nuevo `GET /api/auth/me/permissions`, que solo exige `login_required`.
-- **`backend/app/auth/security.py`:**
+- **`app/backend/app/auth/routes.py`:** nuevo `GET /api/auth/me/permissions`, que solo exige `login_required`.
+- **`app/backend/app/auth/security.py`:**
   - `roles_required` queda marcado DEPRECADO y sin usos.
   - El JWT ya no incluye `username` ni `role`, solo `sub`, `iss`, `iat` y `exp`. `login_required` nunca los leía, y el login y `/me` siguen devolviendo `role` en el cuerpo.
 - **Blueprints** `orders`, `cashbox`, `printers`, `settings`, `materials` y `filaments`: los 30 endpoints pasan de `@login_required` a `@permission_required(Perm.X)` según `api-contract.md`. Los 2 de `auth` no cambian: `/login` sigue público y `/me` solo exige sesión.
 - **Opción B:**
-  - `backend/app/orders/services.py`: nuevo `workshop_quote_vars(requested)` y parámetro `calculate_quote(..., use_workshop_costs)`.
-  - `backend/app/orders/routes.py` pasa `use_workshop_costs = not has_permission(Perm.SETTINGS_UPDATE)`.
+  - `app/backend/app/orders/services.py`: nuevo `workshop_quote_vars(requested)` y parámetro `calculate_quote(..., use_workshop_costs)`.
+  - `app/backend/app/orders/routes.py` pasa `use_workshop_costs = not has_permission(Perm.SETTINGS_UPDATE)`.
   - Un `printer_id` que no es entero o que no existe → 422 con `errors.printer_id`.
-- **`backend/app/settings/services.py`** (nuevo): `get_or_create_settings()` se movió desde `settings/routes.py`, que ahora lo importa. Así `orders` no depende de un `routes.py`. El comportamiento no cambia.
-- **`backend/tests/rbac/test_rbac_workshop_routes.py`** (nuevo, 105 casos):
+- **`app/backend/app/settings/services.py`** (nuevo): `get_or_create_settings()` se movió desde `settings/routes.py`, que ahora lo importa. Así `orders` no depende de un `routes.py`. El comportamiento no cambia.
+- **`app/backend/tests/rbac/test_rbac_workshop_routes.py`** (nuevo, 105 casos):
   - Por cada uno de los 30 endpoints: sin permiso → 403 FORBIDDEN, con exactamente su permiso → ni 401 ni 403, y sin token → 401.
   - Además verifica que la lista de endpoints cubre los 20 permisos de negocio, qué puede y qué no puede hacer el rol "Operador" sembrado, y que `/api/auth/me` y `/me/permissions` solo exigen sesión.
 
 ## Etapa 6 — endpoints de administración (HECHO)
 
 ### Código
-- **`backend/app/rbac/routes.py`** (nuevo): blueprint `rbac_bp` (`/api/rbac`), registrado en `create_app` (y listado en `GET /`). 33 endpoints: lecturas con `permission_required(Perm.RBAC_READ)`, escrituras con `permission_required(Perm.RBAC_MANAGE)`. Sin ORM: cada route hace `ensure` del recurso del path (404) → valida el body con `schemas.py` (422) → llama al service. `errorhandler` del blueprint traduce las excepciones de dominio a `{"error", "code"}` (y `InvalidJsonBody` a 422 `VALIDATION_ERROR` solo dentro de `/api/rbac`; el handler global no cambia).
-- **`backend/app/rbac/schemas.py`** (nuevo): validación a mano (`validate_name_description`, `validate_user_ref`/`group_ref`/`role_ref`, `validate_direct_role`, `validate_permission_codes`, `validate_query`) y serializadores (`group_detail`, `role_detail`, `user_detail`, `direct_role_out`, …).
-- **`backend/app/rbac/services.py`** (sección "Etapa 6"): excepciones de dominio (`RbacNotFoundError`, `NameTakenError`, `AlreadyMemberError`, `AlreadyAssignedError`, `RoleInUseError`, `SelfAssignmentError`, `SelfLockoutError`, `UnknownPermissionError`), CRUD, membresías, roles directos, acceso efectivo, catálogo e impacto. Commit/rollback solo acá; `IntegrityError` por carrera en un UNIQUE → el mismo conflicto 409.
+- **`app/backend/app/rbac/routes.py`** (nuevo): blueprint `rbac_bp` (`/api/rbac`), registrado en `create_app` (y listado en `GET /`). 33 endpoints: lecturas con `permission_required(Perm.RBAC_READ)`, escrituras con `permission_required(Perm.RBAC_MANAGE)`. Sin ORM: cada route hace `ensure` del recurso del path (404) → valida el body con `schemas.py` (422) → llama al service. `errorhandler` del blueprint traduce las excepciones de dominio a `{"error", "code"}` (y `InvalidJsonBody` a 422 `VALIDATION_ERROR` solo dentro de `/api/rbac`; el handler global no cambia).
+- **`app/backend/app/rbac/schemas.py`** (nuevo): validación a mano (`validate_name_description`, `validate_user_ref`/`group_ref`/`role_ref`, `validate_direct_role`, `validate_permission_codes`, `validate_query`) y serializadores (`group_detail`, `role_detail`, `user_detail`, `direct_role_out`, …).
+- **`app/backend/app/rbac/services.py`** (sección "Etapa 6"): excepciones de dominio (`RbacNotFoundError`, `NameTakenError`, `AlreadyMemberError`, `AlreadyAssignedError`, `RoleInUseError`, `SelfAssignmentError`, `SelfLockoutError`, `UnknownPermissionError`), CRUD, membresías, roles directos, acceso efectivo, catálogo e impacto. Commit/rollback solo acá; `IntegrityError` por carrera en un UNIQUE → el mismo conflicto 409.
 
 ### Decisiones
 - **Un solo cálculo para impacto y `SELF_LOCKOUT`.** `AccessChange` describe el cambio (usuarios afectados, qué *grants* —rol por grupo o directo— se pierden y qué roles cambian de permisos) y `_lost_permissions` lo simula en memoria (≤ 3 consultas, sin escribir). Los endpoints de impacto devuelven el resultado; las mutaciones llaman a `_ensure_no_self_lockout` con el **mismo** `AccessChange` antes de escribir. Así `removes_own_rbac_manage = true` ⇔ la mutación da 409 `SELF_LOCKOUT`, y un 409 nunca deja cambios (no hace falta rollback). Descartado: aplicar el cambio, `flush`, recalcular y `rollback` (más simple de razonar pero con escrituras en un GET y sin orden garantizado respecto de los conflictos).
@@ -309,7 +309,7 @@ Con `settings:update`, el body se respeta completo.
 ### Contrato
 `api-contract.md` queda **cerrado**. §6 (impacto) se fijó con el shape que había propuesto el frontend, sin cambios de claves; §6.bis documenta los detalles que el contrato dejaba abiertos (orden fino de chequeos, validaciones, ordenamientos, `PUT` como reemplazo). No se cambió nada que el frontend ya consumiera. A pedido del frontend, dos ajustes aditivos/de texto: `affected_users[].lost_permissions_detail` (`{code, description}`, paralelo a `lost_permissions`) y una aclaración en §2: `/access` no lista grupos sin roles; la membresía se lee de `GroupDetail.members` o `GET /users/{id}/groups`.
 
-### Tests (`backend/tests/rbac/`)
+### Tests (`app/backend/tests/rbac/`)
 | Archivo | Qué cubre |
 |---|---|
 | `admin_support.py` | Helpers: `setup_admin` (admin **no** superusuario con `rbac:read` + `rbac:manage` vía grupo "Seguridad"), `reader`, `count`/`fetch`, `assert_error`. |
@@ -322,20 +322,20 @@ Con `settings:update`, el body se respeta completo.
 
 ## Involved Files (real paths)
 Relevados para esta etapa (no se modifican en la etapa 1):
-- `backend/app/auth/models.py` — `User` (`id`, `username`, `password_hash`, `role VARCHAR(20)`, `is_active`, `created_at`; **sin** `is_superuser` ni `updated_at`).
-- `backend/app/auth/security.py` — `generate_jwt_token` (claims `sub`, `username`, `role`, `iss`, `iat`, `exp`), `login_required` (setea `g.current_user_id`, `g.current_user`), `roles_required(*roles)` (**sin uso en ninguna ruta**).
-- `backend/app/__init__.py` — factory, orden de import de modelos, registro de blueprints.
-- Blueprints: `backend/app/{orders,cashbox,printers,settings,materials,filaments,auth}/routes.py` (todos con `@login_required` únicamente).
-- `backend/migrations/versions/` — cabeza actual `8b56eb6b8347 → 411d9c4af9cc → c8c9b0e3a953` (`add_role_and_is_active_to_users`, última).
-- `backend/tests/conftest.py` — `db.create_all()` (los tests **no** usan migraciones), `_clean_tables` con `TRUNCATE TABLE {table}` sin comillas, usuario fixture `User(id=1, role="admin")`, `make_token`, `auth_headers`.
-- `backend/seeds/seed_operator.py` — crea/actualiza el usuario id=1 con `role="admin"`.
+- `app/backend/app/auth/models.py` — `User` (`id`, `username`, `password_hash`, `role VARCHAR(20)`, `is_active`, `created_at`; **sin** `is_superuser` ni `updated_at`).
+- `app/backend/app/auth/security.py` — `generate_jwt_token` (claims `sub`, `username`, `role`, `iss`, `iat`, `exp`), `login_required` (setea `g.current_user_id`, `g.current_user`), `roles_required(*roles)` (**sin uso en ninguna ruta**).
+- `app/backend/app/__init__.py` — factory, orden de import de modelos, registro de blueprints.
+- Blueprints: `app/backend/app/{orders,cashbox,printers,settings,materials,filaments,auth}/routes.py` (todos con `@login_required` únicamente).
+- `app/backend/migrations/versions/` — cabeza actual `8b56eb6b8347 → 411d9c4af9cc → c8c9b0e3a953` (`add_role_and_is_active_to_users`, última).
+- `app/backend/tests/conftest.py` — `db.create_all()` (los tests **no** usan migraciones), `_clean_tables` con `TRUNCATE TABLE {table}` sin comillas, usuario fixture `User(id=1, role="admin")`, `make_token`, `auth_headers`.
+- `app/backend/seeds/seed_operator.py` — crea/actualiza el usuario id=1 con `role="admin"`.
 - `openspec/archive/2026-09-18-order-deletion/spec-delta.md` — "cualquier operador autenticado" puede borrar pedidos en cualquier estado.
 
 Previstos para etapas siguientes (paths a confirmar en cada etapa):
-- `backend/app/rbac/{__init__,models,constants,services,security,schemas,routes}.py`
-- `backend/migrations/versions/<rev>_add_rbac_tables.py`
-- `backend/seeds/seed_permissions.py`
-- `backend/tests/rbac/`
+- `app/backend/app/rbac/{__init__,models,constants,services,security,schemas,routes}.py`
+- `app/backend/migrations/versions/<rev>_add_rbac_tables.py`
+- `app/backend/seeds/seed_permissions.py`
+- `app/backend/tests/rbac/`
 - `openspec/changes/rbac-access-control/spec-delta.md`
 
 ---
@@ -562,9 +562,9 @@ login_required            (existente: valida JWT, carga g.current_user)
 - Altas/bajas de asignaciones se registran en el audit logger (`delivery3d.audit`) con `user_id` del actor.
 
 ## ⚠️ High-Risk Files / Modules
-- `backend/app/auth/security.py` — afecta a todas las rutas.
+- `app/backend/app/auth/security.py` — afecta a todas las rutas.
 - Todos los `routes.py` en etapa 5 (cambio masivo de decoradores): un permiso mal puesto bloquea la operación del taller o abre un endpoint.
-- `backend/tests/conftest.py` — base de toda la suite.
+- `app/backend/tests/conftest.py` — base de toda la suite.
 
 ## Impact on Data / Integraciones
 - Migración aditiva (6 tablas nuevas + 1-2 columnas en `users`) + backfill de `is_superuser` según P1. Sin `drop_column` en este cambio (salvo decisión distinta en P9).
@@ -588,11 +588,11 @@ Se completa en la etapa 2.
 - [x] **Create** `openspec/changes/rbac-access-control/design.md` (este archivo, sección Etapa 1)
 
 ### Etapa 2
-- [x] **Modify** `backend/app/auth/models.py` — `is_superuser`, `updated_at`
-- [x] **Create** `backend/app/rbac/__init__.py`, `backend/app/rbac/models.py`
-- [x] **Modify** `backend/app/__init__.py` — import de modelos RBAC
-- [x] **Create** `backend/migrations/versions/44a4db68ccde_add_rbac_tables.py`
-- [x] **Modify** `backend/tests/conftest.py` — superuser id=1 + truncado tablas nuevas (P8)
+- [x] **Modify** `app/backend/app/auth/models.py` — `is_superuser`, `updated_at`
+- [x] **Create** `app/backend/app/rbac/__init__.py`, `app/backend/app/rbac/models.py`
+- [x] **Modify** `app/backend/app/__init__.py` — import de modelos RBAC
+- [x] **Create** `app/backend/migrations/versions/44a4db68ccde_add_rbac_tables.py`
+- [x] **Modify** `app/backend/tests/conftest.py` — superuser id=1 + truncado tablas nuevas (P8)
 - [x] **Create** `openspec/changes/rbac-access-control/api-contract.md` (borrador)
 - [ ] `flask db upgrade` contra la base real — **pendiente de aprobación del usuario**
 

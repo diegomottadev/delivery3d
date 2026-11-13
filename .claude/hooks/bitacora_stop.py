@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from bitacora_common import carpeta_bitacora, dir_actual, leer_input
 
 # Cambios que no cuentan como "trabajo para registrar"
-IGNORAR = (".claude/", ".worktrees/", "frontend/build/")
+IGNORAR = (".claude/", ".worktrees/", "app/frontend/build/")
 
 data = leer_input()
 
