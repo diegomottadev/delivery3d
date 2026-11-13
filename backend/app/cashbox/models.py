@@ -74,12 +74,22 @@ class CashMovement(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     income_category_id = db.Column(
         db.Integer,
-        db.ForeignKey("cash_income_categories.id", ondelete="RESTRICT"),
+        db.ForeignKey(
+            "cash_income_categories.id",
+            name="fk_cash_movements_income_cat",
+            ondelete="RESTRICT",
+            onupdate="CASCADE",
+        ),
         nullable=True,
     )
     expense_category_id = db.Column(
         db.Integer,
-        db.ForeignKey("cash_expense_categories.id", ondelete="RESTRICT"),
+        db.ForeignKey(
+            "cash_expense_categories.id",
+            name="fk_cash_movements_expense_cat",
+            ondelete="RESTRICT",
+            onupdate="CASCADE",
+        ),
         nullable=True,
     )
     created_at = db.Column(db.DateTime, nullable=False, default=_utcnow)

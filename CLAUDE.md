@@ -21,11 +21,15 @@ Sistema de Gestión de Pedidos y Caja para Taller de Impresión 3D (Bambu Lab A1
   ```
 - Run linter:
   ```bash
-  cd backend && .venv/bin/ruff check app/ tests/ seeds/
+  cd backend && .venv/bin/ruff check app/ tests/ seeds/ tools/
   ```
 - Run migrations:
   ```bash
   cd backend && PYTHONPATH=. .venv/bin/flask db upgrade
+  ```
+- Check models vs migrated DB (Alembic no compara CHECK; el segundo comando sí):
+  ```bash
+  cd backend && PYTHONPATH=. .venv/bin/flask db check && PYTHONPATH=. .venv/bin/python -m tools.schema_check
   ```
 - Seed initial data:
   ```bash

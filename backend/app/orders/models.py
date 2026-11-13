@@ -115,6 +115,7 @@ class OrderQuote(db.Model):
             "labor_time_minutes IS NULL OR labor_time_minutes >= 0",
             name="chk_order_quotes_labor_time",
         ),
+        db.Index("ix_order_quotes_printer_id", "printer_id"),
     )
 
 

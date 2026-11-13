@@ -71,7 +71,20 @@ jobs:
           -e "ALTER DATABASE delivery3d_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
       - name: Lint (ruff)
-        run: ruff check app/ tests/ seeds/
+        run: ruff check app/ tests/ seeds/ tools/
+
+      # Los tests crean el esquema con create_all; acá se valida el camino real:
+      # migraciones desde cero, modelos == base (flask db check + CHECKs) y downgrade.
+      - name: Migraciones desde cero y chequeo de esquema
+        env:
+          DB_NAME: delivery3d_migrated
+        run: |
+          mysql -h 127.0.0.1 -uroot -pci_root -e "CREATE DATABASE delivery3d_migrated CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL ON delivery3d_migrated.* TO 'ci_user'@'%';"
+          flask db upgrade
+          flask db check
+          python -m tools.schema_check
+          flask db downgrade
+          flask db upgrade
 
       - name: Tests (pytest)
         run: pytest -q
