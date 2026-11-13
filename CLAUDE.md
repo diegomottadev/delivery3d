@@ -51,3 +51,11 @@ Sistema de Gestión de Pedidos y Caja para Taller de Impresión 3D (Bambu Lab A1
 - Follow **Spec-Driven Development (SSD / OpenSpec)**: `openspec/project.md`, `openspec/specs/`, `openspec/changes/`.
 - Strict TDD (Red -> Green -> Refactor) on financial/pricing and state transition modules.
 - Monetary values must use `DECIMAL(10, 2)` (Python `Decimal` with `ROUND_HALF_UP`), never raw floating-point calculations.
+
+## Bitácora del proyecto (`.claude/bitacora/`)
+- La bitácora vive siempre en el checkout principal, también cuando trabajás desde `.worktrees/<rama>`. Nunca la escribas dentro de un worktree.
+- El resumen (`.claude/bitacora/resumen/resumen.md`) se carga solo al iniciar (hook SessionStart). Usalo como contexto, pero verificá contra el código y las specs antes de confiar en un dato puntual.
+- Antes de tocar un módulo que aparezca en `resumen/regresiones.md` o `resumen/descartado.md`, leé esa entrada y avisame.
+- Al cerrar cada tarea con cambios, y antes de cada commit, usá el skill `bitacora-proyecto`. Registrá durante la sesión, no al final.
+- Los prompts se guardan solos en `.claude/bitacora/prompts/` (hook UserPromptSubmit, fuera de git). En la bitácora se referencian por hora, no se copian.
+- La bitácora no reemplaza a OpenSpec: las decisiones de diseño van en `openspec/changes/<cambio>/design.md` y la bitácora las enlaza.

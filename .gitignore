@@ -25,3 +25,6 @@ __pycache__/
 
 # symlink de la venv en worktrees
 backend/.venv
+
+# Bitácora: los prompts textuales quedan solo en local (el repo es público)
+.claude/bitacora/prompts/
