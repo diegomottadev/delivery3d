@@ -9,3 +9,4 @@ Decisiones vigentes y reemplazadas. Las de diseño de un cambio viven en su `ope
 - 2026-11-12 · Bitácora en `.claude/bitacora/` del checkout principal, con prompts fuera de git · por qué: una sola historia para todos los worktrees y el repo es público · ref: [2026-11-12](../2026-11-12.md)
 - 2026-11-13 · Impacto de bajas y SELF_LOCKOUT del RBAC calculados con una sola simulación en memoria · por qué: el diálogo coincide con lo que hace el backend y un 409 no deja cambios a medias · ref: [2026-11-13](../2026-11-13.md)
 - 2026-11-13 · Selects nativos en lugar del `Dropdown` de PrimeReact en Seguridad · por qué: el `Dropdown` no se puede testear en jsdom · ref: [2026-11-13](../2026-11-13.md)
+- 2026-11-13 · Sin skills externos en `.agents/skills`; los skills del proyecto viven solo en `.claude/skills` · por qué: los enlaces al plugin estaban rotos y Claude Code no lee esa carpeta · ref: [2026-11-13](../2026-11-13.md)
